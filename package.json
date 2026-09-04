@@ -1,10 +1,11 @@
 {
   "name": "pulsecheck",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
-  "description": "DevTools extension that records a page's measurement layer and exports it for LLM analysis",
+  "description": "Chrome DevTools recorder for tracking requests, dataLayer pushes and consent changes",
   "scripts": {
-    "test": "node test/run.mjs"
+    "test": "node test/run.mjs",
+    "validate:store": "node tools/validate-store.mjs"
   }
 }

@@ -14,7 +14,7 @@ The Markdown file is the main output. It contains enough context to review the
 session by hand or give it to an LLM: scenario, vendors, checks, parameters and
 the full event order.
 
-> Status: alpha. Pulsecheck is not in the Chrome Web Store yet.
+> Status: alpha. The Chrome Web Store package is prepared but not submitted.
 
 ![Pulsecheck recording a session](store/01-session-1280x800.png)
 
@@ -44,9 +44,10 @@ The manifest requests no extension permissions.
 4. Inspect or filter the recorded events.
 5. Save the Markdown file, copy it, or export JSONL.
 
-Recording starts when the panel opens and ends when DevTools closes. **All
-requests** also records non-static site requests as `vendor: "request"`. These
-rows are context; they are not counted as tracking events or duplicates.
+Recording starts when the panel opens and ends when DevTools closes. Optional
+**API context** adds the method, host, path, status and MIME type for non-static
+site requests. It excludes request bodies and query strings. Context rows are
+not counted as tracking events or duplicates.
 
 ![Expanded event details](store/02-event-1280x800.png)
 
@@ -71,7 +72,7 @@ the request is kept as `unparsed` rather than discarded.
 - session metadata and scenario notes;
 - event counts by vendor;
 - top event names;
-- duplicate, consent and PII checks; and
+- duplicate, consent and sensitive-field checks; and
 - the complete timeline, split by page and numbered for citation.
 
 `pulsecheck-<host>-<date>.jsonl` contains the same session as schema v1: one
@@ -94,6 +95,7 @@ match.
 - Redaction runs before either export is created.
 - Detected emails, phone numbers, structured name and national-ID fields, and
   user/device identifiers are masked.
+- Structured credential and payment-secret fields are replaced completely.
 - Measurement and deduplication keys such as `tid`, `cid`, `sid`, `eid`,
   `event_id` and `insert_id` are preserved because the audit needs them.
 
@@ -101,6 +103,8 @@ JSON and form-encoded request bodies are decoded before key-based masking. For
 arbitrary unstructured strings, Pulsecheck masks email and phone shapes but does
 not guess whether every long number is an identifier. Review exported alpha
 sessions before sharing them.
+
+See the full [`privacy policy`](PRIVACY.md).
 
 ## Analysis skill
 
@@ -132,7 +136,13 @@ Run the test suite:
 npm test
 ```
 
-The current suite has 61 checks covering parsers, sanitized live captures, the
+Validate the store package inputs:
+
+```sh
+npm run validate:store
+```
+
+The current suite has 62 checks covering parsers, sanitized live captures, the
 data-layer tap, redaction, consent replay, duplicate detection and both export
 formats.
 
@@ -143,6 +153,7 @@ Further documentation:
 - [`docs/parsers.md`](docs/parsers.md)
 - [`docs/codebase-analysis.md`](docs/codebase-analysis.md)
 - [`docs/competitive-analysis.md`](docs/competitive-analysis.md)
+- [`STORE_SUBMISSION.md`](STORE_SUBMISSION.md)
 
 ## License
 

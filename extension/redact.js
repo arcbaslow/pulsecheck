@@ -8,6 +8,10 @@ const HAS_EMAIL = new RegExp(EMAIL.source); // /g regexes are stateful in .test(
 // Keys whose value is PII regardless of shape.
 const PII_KEY = /^(user[._]?id|uid|device[._]?id|em|ph|fn|ln|e[-_]?mail|email|phone|tel|telephone|msisdn|customer[._]?id)$/i;
 
+// Credentials and payment secrets must never survive an export. Unlike PII,
+// preserving their shape has no audit value, so replace the entire value.
+const SENSITIVE_KEY = /^(password|passwd|passcode|pin|secret|client[._-]?secret|token|access[._-]?token|refresh[._-]?token|auth[._-]?token|authorization|bearer|cookie|set[._-]?cookie|jwt|card[._-]?number|pan|cvv|cvc|iban|account[._-]?(?:number|no))$/i;
+
 // National id numbers, matched on token boundaries so `iin_bin` and `bin_iin`
 // are caught but `binary` and `join` are not. A KZ ИИН identifies a person
 // outright; for an ИП the BIN is the same number.
@@ -104,6 +108,11 @@ function redactValue(key, value, path, hits) {
   if (typeof value === 'object') return walk(value, path, hits);
   const s = String(value);
   if (KEEP.test(key)) return value;
+  if (SENSITIVE_KEY.test(key)) {
+    if (!s) return value;
+    hits.push({ path, kind: 'secret' });
+    return '[redacted]';
+  }
   if (PII_KEY.test(key) || NAME_KEY.test(key) || NATIONAL_ID_KEY.test(key)) {
     if (!s) return value;
     hits.push({ path, kind: NATIONAL_ID_KEY.test(key) ? 'national_id' : NAME_KEY.test(key) ? 'name' : 'identifier' });

@@ -354,6 +354,20 @@ t('PII in the URL query is masked and located', () => {
   assert.ok(hits.some((h) => h.path.startsWith('url.')));
 });
 
+t('credentials and payment secrets are removed completely', () => {
+  const { event, hits } = redactEvent({
+    params: {
+      body: '{"access_token":"live-token","card_number":"4111111111111111","value":129}',
+    },
+    url: 'https://api.example.kz/submit?authorization=Bearer%20live-token',
+  });
+  assert.ok(!event.params.body.includes('live-token'));
+  assert.ok(!event.params.body.includes('4111111111111111'));
+  assert.ok(!event.url.includes('live-token'));
+  assert.ok(event.params.body.includes('"value":129'));
+  assert.equal(hits.filter((h) => h.kind === 'secret').length, 3);
+});
+
 t('KZ national id and sole-trader name are masked (sanitized live capture)', () => {
   const { event, hits } = redactEvent({
     params: { entity: { entity_type: 'ip', iin_bin: '920422300185', organization_name: 'ИП РАХИМОВ', registry_status: '1' } },
@@ -375,8 +389,8 @@ t('audit-subject *_name fields are not treated as person names', () => {
 });
 
 t('PII inside a captured request body is masked', () => {
-  // "All requests" mode records the site's own API payloads - where the real
-  // PII lives, embedded in JSON rather than as a whole param value.
+  // Tracking payloads can carry PII embedded in JSON rather than as a whole
+  // parameter value.
   const body = '{"iin":"920422300185","phone":"+7 701 234 56 78","email":"a.person@mail.ru","created_at":"2024-01-15 10:30:45","amount":1250000}';
   const { event, hits } = redactEvent({ params: { body } });
   assert.ok(!event.params.body.includes('920422300185'));

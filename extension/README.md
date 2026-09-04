@@ -55,7 +55,7 @@ deliberate: this is a recorder you consciously run, not something always on.
 |---|---|
 | **Recording** | Red and pulsing while capturing. Click to pause and resume. |
 | **Clear** | Drops the timeline and restarts the clock. |
-| **All requests** | Off by default. Also records the site's own XHR/fetch calls that carry no tracking event, as `vendor:"request"` - use it when a finding needs anchoring to what the backend received. Static assets stay excluded. |
+| **API context** | Off by default. Adds method, host, path, status and MIME type for non-static site requests. Request bodies and query strings are excluded. |
 | **Scenario** | Free text, written into the dump header. |
 | **Filter** | Substring match across event name, vendor, URL and parameters. |
 | Vendor chips | Click to show or hide a vendor. |
@@ -103,6 +103,9 @@ are mechanical starting points - the analysis is the LLM's job.
   numbers, person names, national id numbers (ИИН/БИН, ИНН) and user
   identifiers are masked in parameters, URL query strings and captured
   request bodies. The unmasked value never reaches the export.
+- **Credential and payment-secret fields are removed completely.** Passwords,
+  tokens, card numbers, CVV values and similar named fields become
+  `[redacted]`.
 - **Masking preserves shape, not content** - `d***@***.kz`, `+7********78` -
   enough to prove a leak without carrying it.
 - **Analysis identifiers survive on purpose.** `cid`, `sid`, `tid`,
