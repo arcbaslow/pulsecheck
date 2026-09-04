@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pulsecheck</title>
+<style>
+  :root { color-scheme: light dark; --fg: #252525; --muted: #6b6b6b; --accent: #0F6E56; --line: #e2e2df; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg: #e6e6e3; --muted: #9a9a96; --accent: #1D9E75; --line: #343433; }
+  }
+  body {
+    width: 268px; margin: 0; padding: 14px 16px 16px;
+    font: 13px/1.5 system-ui, "Segoe UI", Roboto, sans-serif; color: var(--fg);
+  }
+  h1 { font-size: 15px; margin: 0 0 8px; }
+  p { margin: 0 0 10px; }
+  ol { margin: 0 0 10px; padding-left: 18px; }
+  li { margin-bottom: 3px; }
+  kbd {
+    font: inherit; border: 1px solid var(--line); border-bottom-width: 2px;
+    border-radius: 4px; padding: 0 4px;
+  }
+  .accent { color: var(--accent); font-weight: 600; }
+  .note { color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; margin: 0; }
+</style>
+</head>
+<body>
+  <h1>Pulsecheck lives in DevTools</h1>
+  <p>There is no toolbar button - it is a tab inside DevTools.</p>
+  <ol>
+    <li>Open a normal website</li>
+    <li>Press <kbd>F12</kbd></li>
+    <li>The <span class="accent">Pulsecheck</span> tab sits next to Elements and Network, or under <kbd>»</kbd> if the strip is crowded</li>
+  </ol>
+  <p class="note">If DevTools was already open when you installed the extension, close it and open it again. The panel never appears on <code>chrome://</code> pages - that is a Chrome restriction.</p>
+</body>
+</html>

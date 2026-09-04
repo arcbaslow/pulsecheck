@@ -1,0 +1,10 @@
+{
+  "name": "pulsecheck",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "DevTools extension that records a page's measurement layer and exports it for LLM analysis",
+  "scripts": {
+    "test": "node test/run.mjs"
+  }
+}
