@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pulsecheck</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fff;
+    --fg: #252525;
+    --muted: #6b6b6b;
+    --line: #e2e2df;
+    --accent: #0F6E56;
+    --accent-soft: #1D9E75;
+    --row: #fafaf8;
+    --warn: #a8460f;
+    --rec: #B3261E;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e1e; --fg: #e6e6e3; --muted: #9a9a96; --line: #343433;
+      --accent: #1D9E75; --accent-soft: #1D9E75; --row: #252525; --warn: #e08a4f;
+      --rec: #F2705C;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex; flex-direction: column;
+    background: var(--bg); color: var(--fg);
+    font: 13px/1.45 system-ui, "Segoe UI", Roboto, sans-serif;
+  }
+  #bar {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    padding: 8px 10px; border-bottom: 1px solid var(--line);
+  }
+  button {
+    font: inherit; color: var(--fg); background: transparent;
+    border: 1px solid var(--line); border-radius: 5px;
+    padding: 4px 10px; cursor: pointer;
+  }
+  button:hover { border-color: var(--accent-soft); }
+  button.primary { border-color: var(--accent); color: var(--accent); }
+  button.toggle.on { border-color: var(--accent); color: var(--accent); }
+
+  /* Record button: red and breathing while capturing, inert when paused. */
+  #rec { display: inline-flex; align-items: center; gap: 7px; }
+  #rec .dot {
+    position: relative; width: 8px; height: 8px; border-radius: 50%;
+    background: currentColor; flex: none;
+  }
+  #rec.on { border-color: var(--rec); color: var(--rec); }
+  #rec.on:hover { border-color: var(--rec); }
+  #rec.on .dot { animation: breathe 1.7s ease-in-out infinite; }
+  #rec.on .dot::after {
+    content: ''; position: absolute; inset: -3px; border-radius: 50%;
+    border: 1px solid currentColor; animation: wave 1.7s ease-out infinite;
+  }
+  #rec.off { color: var(--muted); }
+  #rec.off .dot { background: transparent; box-shadow: inset 0 0 0 1.5px currentColor; }
+  @keyframes breathe { 50% { opacity: .3; transform: scale(.6); } }
+  @keyframes wave {
+    0% { opacity: .7; transform: scale(.7); }
+    100% { opacity: 0; transform: scale(2.1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #rec.on .dot { animation: none; }
+    #rec.on .dot::after { display: none; }
+  }
+
+  input {
+    font: inherit; color: var(--fg); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 5px; padding: 4px 8px;
+  }
+  #notes { flex: 1 1 200px; min-width: 140px; }
+  #filter { flex: 0 1 160px; }
+  .spacer { flex: 1 1 auto; }
+  #count { color: var(--muted); }
+  #chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 6px 10px 0; }
+  .chip {
+    border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px;
+    cursor: pointer; color: var(--muted); font-size: 12px;
+  }
+  .chip.on { border-color: var(--accent); color: var(--accent); }
+  #err { color: var(--warn); padding: 0 10px; }
+  #err:empty { display: none; }
+  #list { flex: 1 1 auto; overflow: auto; padding: 6px 0 24px; }
+  .row {
+    display: grid; grid-template-columns: 58px 84px minmax(120px, 260px) 1fr;
+    gap: 10px; align-items: baseline;
+    padding: 4px 10px; border-bottom: 1px solid var(--line); cursor: pointer;
+  }
+  .row:nth-child(even) { background: var(--row); }
+  .t { color: var(--muted); font-family: ui-monospace, "Cascadia Mono", Menlo, monospace; font-size: 12px; }
+  .v { color: var(--accent); }
+  .v[data-vendor="unparsed"], .v[data-vendor="generic"] { color: var(--warn); }
+  .v[data-vendor="request"] { color: var(--muted); }
+  .e { font-weight: 600; }
+  .p { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row.open .p { white-space: normal; }
+  pre {
+    grid-column: 1 / -1; margin: 6px 0 2px; padding: 8px;
+    background: var(--row); border: 1px solid var(--line); border-radius: 5px;
+    font-family: ui-monospace, "Cascadia Mono", Menlo, monospace; font-size: 12px;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  #empty { color: var(--muted); padding: 24px 10px; max-width: 60ch; }
+</style>
+</head>
+<body>
+  <div id="bar">
+    <button id="rec" class="on" title="Pause capture"><span class="dot"></span><span id="recLabel">Recording</span></button>
+    <button id="clear">Clear</button>
+    <button id="all" class="toggle" title="Also record XHR/fetch requests that carry no recognised event - the site's own API calls">All requests</button>
+    <input id="notes" placeholder="Scenario: what you are walking through">
+    <input id="filter" placeholder="Filter">
+    <span class="spacer"></span>
+    <span id="count">0 events</span>
+    <button id="copy">Copy .md</button>
+    <button id="md" class="primary">Save .md</button>
+    <button id="jsonl">.jsonl</button>
+  </div>
+  <div id="chips"></div>
+  <div id="err"></div>
+  <div id="list"><div id="empty">Walk through your scenario on the page and events appear here. Capture starts when the panel opens; dataLayer pushes from before that are recovered from a snapshot.</div></div>
+  <script type="module" src="panel.js"></script>
+</body>
+</html>
