@@ -1,6 +1,6 @@
 # Codebase notes
 
-Reviewed 4 September 2026. `npm test` passes all 61 checks.
+Reviewed 4 September 2026. `npm test` passes all 62 checks.
 
 ## Structure
 
@@ -56,8 +56,7 @@ flag and the export's PII check therefore agree with the masked output.
 |---|---|---|
 | No Chrome integration test | DevTools registration, navigation, downloads and clipboard are only tested manually. | Add a release checklist now and an unpacked-extension browser test later. |
 | Silent data-layer overflow | `tap.js` stops buffering after roughly 5,000 queued items without recording that anything was dropped. | Count dropped items and include a warning in the panel and export. |
-| Version is duplicated | `manifest.json` and `export.js` both contain `0.1.0`; the suite now fails when either differs from `package.json`. | Read `chrome.runtime.getManifest().version` in a later refactor. |
-| Mouse-only event rows | Expanded details are attached to clickable `<div>` elements with no keyboard semantics. | Use a button or add focus, role and keyboard handling. |
+| Version is duplicated | `manifest.json` and `export.js` both contain `0.1.1`; the suite fails when either differs from `package.json`. | Read `chrome.runtime.getManifest().version` in a later refactor. |
 | Stale plan | `docs/PLAN.md` still mentions esbuild and `getContent()`, although the final architecture uses neither. | Mark the document historical or update completed items. |
 | Whole-window scan every second | `tap.js` calls `Object.keys(window)` to find late data layers. | Keep it unless profiling on real audit targets shows a problem. |
 

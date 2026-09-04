@@ -26,7 +26,7 @@ therefore always identical, in both outputs. `seq` is what findings cite.
 ## Session header (line 1)
 
 ```json
-{"type":"session","schema":1,"tool":"pulsecheck","version":"0.1.0",
+{"type":"session","schema":1,"tool":"pulsecheck","version":"0.1.1",
  "startedAt":1754812800000,"page":"https://example.kz/loan",
  "userAgent":"...","notes":"","capture":{"allRequests":false}}
 ```
@@ -67,15 +67,15 @@ with consecutive `seq`. The skill counts events, not requests.
 
 ## vendor: "request" - context, not measurement
 
-Off by default, enabled with **All requests** in the panel. The header's
+Off by default, enabled with **API context** in the panel. The header's
 `capture.allRequests` records which - without it, a dump with no API calls in
 it is ambiguous between "none happened" and "we were not recording them".
 
-Records XHR / fetch / beacon calls that carry no recognised event: the site's
-own API traffic. Static assets are excluded by URL extension and response
-MIME rather than by `_resourceType`, which is undocumented on the HAR entry -
-a whitelist on a field that might be absent fails silent and captures nothing. `event` is `METHOD /path`, `params` carries `host`, `status`, `mime`
-and the request body (2 KB cap, redacted like any other field).
+Records metadata for XHR / fetch / beacon calls that carry no recognised event:
+the site's own API traffic. Static assets are excluded by URL extension and
+response MIME rather than by `_resourceType`, which is undocumented on the HAR
+entry. `event` is `METHOD /path`; `params` carries `host`, `status` and `mime`.
+Request bodies and query strings are not kept for context rows.
 
 These are not tracking events and must never be counted as such. They exist
 so a finding can be anchored to what the site actually did: the form POST
@@ -89,6 +89,9 @@ name-like values in `params` and `url` query (`d***@***.com`,
 `+7*******42`), sets `redacted:true`. The pre-redaction value never leaves
 the panel. Detected PII locations are themselves an audit finding - the
 mask preserves enough shape to prove the leak without carrying it.
+
+Named credential and payment-secret fields are replaced with `[redacted]`
+rather than shape-preserving masks.
 
 ## session.md (companion, human- and LLM-facing)
 

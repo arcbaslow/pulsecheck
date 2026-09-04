@@ -9,7 +9,7 @@
 | Events | 10 |
 | Site requests (non-tracking) | NOT recorded - the "All requests" toggle was off |
 | User agent | Chrome |
-| Dump schema | v1 (Pulsecheck 0.1.0) |
+| Dump schema | v1 (Pulsecheck 0.1.1) |
 
 PII was masked before this file was written. Every number below is derivable from the timeline at the end of the document.
 
@@ -42,7 +42,7 @@ PII was masked before this file was written. Every number below is derivable fro
   - `ga4|purchase|G-DEMO123|129|USD` - seq 9 and 10, 90ms apart
 - Events sent while the relevant storage was denied: **1**
   - seq 6: meta `InitiateCheckout` with `ad_storage=denied`
-- Fields carrying PII (masked): **0**
+- Sensitive fields (masked): **0**
 - Not recognised by any parser: **0**, caught by the generic parser: **0**
 
 ## Timeline

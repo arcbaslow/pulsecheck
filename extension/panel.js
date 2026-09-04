@@ -25,10 +25,9 @@ const list = $('list');
 // round trip for response bodies we never read.
 const TRANSPORT = { xhr: 'xhr', fetch: 'fetch', image: 'pixel', ping: 'beacon', beacon: 'beacon' };
 
-// "All requests" mode records calls that carry no recognised event - the
-// site's own API traffic. Filtering excludes static assets by URL and MIME
-// rather than whitelisting `_resourceType`: that field is undocumented on the
-// HAR entry, and if it is ever absent a whitelist silently captures nothing.
+// "API context" records metadata for calls that carry no recognised event.
+// Request bodies and query strings are deliberately excluded. Filtering uses
+// URL and MIME rather than undocumented `_resourceType` values.
 const STATIC_URL = /\.(js|mjs|css|png|jpe?g|gif|svg|webp|avif|ico|woff2?|ttf|otf|eot|mp4|webm|mp3|wasm|map)(\?|#|$)/i;
 const STATIC_MIME = /^(image|font|video|audio)\/|javascript|text\/css|text\/html/i;
 
@@ -54,8 +53,8 @@ chrome.devtools.network.onRequestFinished.addListener((entry) => {
         source: 'network',
         vendor: 'request',
         event: req.method + ' ' + req.path,
-        params: { host: req.host, status: entry.response && entry.response.status, mime: entry.response && entry.response.content && entry.response.content.mimeType, body: req.body ? req.body.slice(0, 2000) : undefined },
-        url: req.url,
+        params: { host: req.host, status: entry.response && entry.response.status, mime: entry.response && entry.response.content && entry.response.content.mimeType },
+        url: new URL(req.url).origin + req.path,
         transport: req.transport,
         ts,
       });
@@ -143,6 +142,9 @@ const visible = (e) =>
 function row(e) {
   const el = document.createElement('div');
   el.className = 'row';
+  el.tabIndex = 0;
+  el.setAttribute('role', 'button');
+  el.setAttribute('aria-expanded', 'false');
   const t = ((e.ts - state.startedAt) / 1000).toFixed(1);
   const preview = JSON.stringify(e.params);
   for (const [cls, text, attr] of [['t', '+' + t + 's'], ['v', e.vendor, e.vendor], ['e', e.event], ['p', preview]]) {
@@ -152,8 +154,9 @@ function row(e) {
     if (attr) span.dataset.vendor = attr;
     el.appendChild(span);
   }
-  el.addEventListener('click', () => {
+  const toggle = () => {
     const open = el.classList.toggle('open');
+    el.setAttribute('aria-expanded', String(open));
     const existing = el.querySelector('pre');
     if (existing) existing.remove();
     if (open) {
@@ -161,6 +164,12 @@ function row(e) {
       pre.textContent = JSON.stringify({ source: e.source, transport: e.transport, url: e.url, page: e.page, params: e.params }, null, 2);
       el.appendChild(pre);
     }
+  };
+  el.addEventListener('click', toggle);
+  el.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    ev.preventDefault();
+    toggle();
   });
   return el;
 }
@@ -252,8 +261,12 @@ $('rec').addEventListener('click', () => {
 });
 
 $('all').addEventListener('click', () => {
+  if (!state.allRequests && !window.confirm(
+    'API context records the method, host, path, status and MIME type for non-static site requests. Request bodies and query strings are excluded. Nothing is sent off-device. Enable it for this session?',
+  )) return;
   state.allRequests = !state.allRequests;
   $('all').classList.toggle('on', state.allRequests);
+  $('all').setAttribute('aria-pressed', String(state.allRequests));
 });
 
 $('clear').addEventListener('click', () => {

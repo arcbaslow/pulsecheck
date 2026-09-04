@@ -6,7 +6,7 @@
 import { redactEvent } from './redact.js';
 
 const SCHEMA = 1;
-const TOOL_VERSION = '0.1.0';
+const TOOL_VERSION = '0.1.1';
 
 // Which consent signal each vendor is supposed to respect.
 const CONSENT_KEY = { ga4: 'analytics_storage', metrica: 'analytics_storage', amplitude: 'analytics_storage', meta: 'ad_storage', tiktok: 'ad_storage' };
@@ -185,7 +185,7 @@ export function toMarkdown(session) {
     (c.dupes.length ? '\n' + c.dupes.slice(0, 20).map((d) => `  - \`${d.key}\` - seq ${d.a} and ${d.b}, ${d.gap}ms apart`).join('\n') : ''));
   L.push(`- Events sent while the relevant storage was denied: **${c.violations.length}**` +
     (c.violations.length ? '\n' + c.violations.slice(0, 20).map(({ e, key }) => `  - seq ${e.seq}: ${e.vendor} \`${e.event}\` with \`${key}=denied\``).join('\n') : ''));
-  L.push(`- Fields carrying PII (masked): **${c.pii.length}**` +
+  L.push(`- Sensitive fields (masked): **${c.pii.length}**` +
     (c.pii.length ? '\n' + c.pii.map((p) => `  - \`${p.path}\` - ${p.kind}, ${p.count}x${p.inUrl ? ', **in the URL query string**' : ''} (seq ${p.seqs.join(', ')})`).join('\n') : ''));
   L.push(`- Not recognised by any parser: **${c.unparsed}**, caught by the generic parser: **${c.generic}**`);
   L.push('');

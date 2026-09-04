@@ -1,0 +1,27 @@
+Pulsecheck records one tracking scenario inside Chrome DevTools. It combines outgoing analytics requests, dataLayer pushes, consent changes and page navigation in one ordered timeline.
+
+Use it to:
+
+- verify which analytics events fired;
+- inspect the parameters sent with each event;
+- compare network hits with dataLayer pushes;
+- identify likely duplicate events;
+- see the consent state that applied when a request was sent; and
+- export the evidence as Markdown or JSONL.
+
+Pulsecheck includes parsers for GA4, Meta Pixel, Yandex Metrica, Amplitude and TikTok. Event-shaped first-party collectors are retained through a generic fallback instead of being silently dropped.
+
+The Markdown export contains session context, vendor inventory, automatic checks and the complete numbered timeline. JSONL contains the same event list as schema v1 for scripts and comparison tools.
+
+Privacy:
+
+- no account, backend, telemetry or advertising;
+- no extension permissions;
+- sessions stay in memory and end when DevTools closes;
+- files are created only when you save or copy them;
+- detected personal identifiers are masked before export; and
+- named credential and payment-secret fields are removed completely.
+
+Optional API context records only method, host, path, status and MIME type for non-static site requests. Request bodies and query strings are excluded.
+
+Pulsecheck is alpha software. Review exported sessions before sharing them.
