@@ -8,7 +8,7 @@
 - Language: `English`
 - Homepage: `https://github.com/arcbaslow/pulsecheck`
 - Support: `https://github.com/arcbaslow/pulsecheck/issues`
-- Privacy policy: `https://github.com/arcbaslow/pulsecheck/blob/main/PRIVACY.md`
+- Privacy policy: `https://goodlabs.kz/privacy`
 
 Paste `description.txt` into the detailed-description field.
 
