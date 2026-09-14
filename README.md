@@ -14,8 +14,6 @@ The Markdown file is the main output. It contains enough context to review the
 session by hand or give it to an LLM: scenario, vendors, checks, parameters and
 the full event order.
 
-> Status: alpha. The Chrome Web Store package is prepared but not submitted.
-
 ![Pulsecheck recording a session](store/01-session-1280x800.png)
 
 ## Install
