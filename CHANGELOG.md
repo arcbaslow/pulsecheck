@@ -1,5 +1,8 @@
 # Changelog
 
+Pulsecheck is now available on the
+[Chrome Web Store](https://chromewebstore.google.com/detail/pulsecheck-tracking-audit/fcdnmpffnfcbfhkokkfnilicjbpjdmnp).
+
 ## 0.1.1 — 2026-09-05
 
 Chrome Web Store preparation.

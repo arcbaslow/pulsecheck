@@ -1,5 +1,10 @@
 # Chrome Web Store submission checklist
 
+Pulsecheck is published on the
+[Chrome Web Store](https://chromewebstore.google.com/detail/pulsecheck-tracking-audit/fcdnmpffnfcbfhkokkfnilicjbpjdmnp).
+Use this checklist for future updates to that listing. Unchecked items are
+repeatable release tasks, not the status of the initial submission.
+
 ## Ready in the repository
 
 - [x] Manifest V3 package with `manifest.json` at the ZIP root.
@@ -15,12 +20,12 @@
 - [x] No requested permissions, remote code, telemetry or backend.
 - [x] Automated test suite and version-consistency check.
 
-## Manual dashboard work
+## Manual dashboard work for each update
 
-- [ ] Register or open the Chrome Web Store developer account and confirm the
-  publisher name.
-- [ ] Verify the publisher email and enable two-step verification if requested.
-- [ ] Upload `pulsecheck-chrome-web-store-0.1.1.zip`.
+- [ ] Open the existing Pulsecheck listing in the publisher dashboard
+  (extension ID `fcdnmpffnfcbfhkokkfnilicjbpjdmnp`).
+- [ ] Build and validate the upload package for the new version.
+- [ ] Upload the versioned `pulsecheck-chrome-web-store-<version>.zip`.
 - [ ] Paste the detailed description and dashboard answers from this directory.
 - [ ] Upload the icon, screenshots and promo tiles in the documented order.
 - [ ] Choose distribution visibility and regions.
@@ -29,9 +34,13 @@
 - [ ] Confirm the publisher can legally accept the Developer Agreement and that
   the privacy policy matches the final dashboard answers.
 
-## Validation before public visibility
+## Validation for each release
 
-The project plan still marks a full audit on at least three different sites as
-unfinished. Use trusted testers or an unlisted release until those sessions have
-been compared with Chrome's Network panel and the page's data layer. All
-visibility modes receive the same policy review.
+- [ ] Record full audit sessions on at least three sites with different tracking
+  stacks and compare the exports with Chrome's Network panel and the page's
+  data layer.
+- [ ] Inspect both exports for unmasked values.
+- [ ] Test install, panel registration, navigation, pause/resume, clear, filters,
+  copy and downloads in the target Chrome version.
+- [ ] Confirm that the store privacy disclosure matches the final manifest and
+  runtime behavior.

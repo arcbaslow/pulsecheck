@@ -18,6 +18,12 @@ the full event order.
 
 ## Install
 
+Install [Pulsecheck from the Chrome Web Store](https://chromewebstore.google.com/detail/pulsecheck-tracking-audit/fcdnmpffnfcbfhkokkfnilicjbpjdmnp),
+then open DevTools on a normal website and select **Pulsecheck**. The tab may
+be behind `»`.
+
+### Load unpacked for development
+
 There is no build step. Download and extract the
 [latest release](https://github.com/arcbaslow/pulsecheck/releases/latest), or
 clone the repository.

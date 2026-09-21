@@ -13,7 +13,13 @@ Built for the tracking audit: the deliverable is evidence, not a live view.
 
 ## Install
 
-Not in the Chrome Web Store yet, so load it unpacked. There is no build step.
+Install [Pulsecheck from the Chrome Web Store](https://chromewebstore.google.com/detail/pulsecheck-tracking-audit/fcdnmpffnfcbfhkokkfnilicjbpjdmnp).
+Open a website, press <kbd>F12</kbd>, and select the **Pulsecheck** tab in
+DevTools (or the `»` overflow menu).
+
+### Load unpacked for development
+
+There is no build step.
 
 1. Open `chrome://extensions`
 2. Turn on **Developer mode** (top right)
