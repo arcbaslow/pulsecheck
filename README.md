@@ -161,7 +161,6 @@ Further documentation:
 
 ## License
 
-No license has been granted yet. You may inspect and test the source, but the
-default copyright rules apply until a license is added.
+MIT. See [`LICENSE`](LICENSE).
 
 Built by [Good Labs](https://goodlabs.kz).
