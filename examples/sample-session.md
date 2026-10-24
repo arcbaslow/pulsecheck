@@ -11,7 +11,7 @@
 | User agent | Chrome |
 | Dump schema | v1 (Pulsecheck 0.1.1) |
 
-PII was masked before this file was written. Every number below is derivable from the timeline at the end of the document.
+Pattern-based redaction masks detected emails, phones and IP addresses, plus values under recognised personal-identifier, person-name and secret keys in parameters, bodies, request URLs, page URLs and URL-valued parameters (including paths and fragments). IP detection applies to whole trimmed addresses or values under IP-like keys, excluding uafvl, uapv and keys containing version. Every event name undergoes inline pattern detection; paths in METHOD /path names use the same segment rules as URL paths. Client ids and other audit identifiers are kept by design. Event names and page_name are not treated as person-name keys. Detection is incomplete; review before sharing. Scenario notes and the user-agent string are not redacted. Every number below is derivable from the timeline at the end of the document.
 
 ## Inventory
 

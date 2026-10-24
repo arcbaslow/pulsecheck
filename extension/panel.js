@@ -74,26 +74,31 @@ chrome.devtools.network.onNavigated.addListener((url) => {
 let armedAt = 0;
 
 async function arm() {
+  if (!state.recording) return;
   if (Date.now() - armedAt < 1000) return; // pages we cannot eval into must not spin
   armedAt = Date.now();
   const src = await (await fetch('tap.js')).text();
+  if (!state.recording) return;
   chrome.devtools.inspectedWindow.eval(src, (_res, err) => {
     fail(err ? 'could not attach the dataLayer tap: ' + (err.description || err.code || '') : '');
   });
 }
 
+function stopTap() {
+  chrome.devtools.inspectedWindow.eval('window.__pulsecheck && window.__pulsecheck.stop()');
+}
+
 function drain() {
+  if (!state.recording) return;
   chrome.devtools.inspectedWindow.eval(
     'window.__pulsecheck ? JSON.stringify(window.__pulsecheck.drain()) : ""',
     (res, err) => {
+      if (!state.recording) return;
       if (err || res === undefined) return;
       if (!res) { arm(); return; } // tap gone (navigation, or first run) - re-arm
       let payload;
       try { payload = JSON.parse(res); } catch { return; }
       if (payload.page) state.page = payload.page;
-      // Paused: still drain, or the page-side buffer fills and dumps stale
-      // events with stale timestamps the moment recording resumes.
-      if (!state.recording) return;
       for (const item of payload.items) {
         const d = parseDataLayer(item.msg);
         add({
@@ -255,6 +260,8 @@ $('copy').addEventListener('click', async () => {
 
 $('rec').addEventListener('click', () => {
   state.recording = !state.recording;
+  if (state.recording) drain();
+  else stopTap();
   $('rec').className = state.recording ? 'on' : 'off';
   $('recLabel').textContent = state.recording ? 'Recording' : 'Paused';
   $('rec').title = state.recording ? 'Pause capture' : 'Resume capture';
@@ -290,4 +297,9 @@ chrome.devtools.inspectedWindow.eval('JSON.stringify({href: location.href, ua: n
   state.userAgent = ua;
 });
 arm();
-setInterval(drain, 500);
+const drainTimer = setInterval(drain, 500);
+window.addEventListener('pagehide', () => {
+  state.recording = false;
+  clearInterval(drainTimer);
+  stopTap();
+});

@@ -10,7 +10,7 @@ const PII_KEY = /^(user[._]?id|uid|device[._]?id|em|ph|fn|ln|e[-_]?mail|email|ph
 
 // Credentials and payment secrets must never survive an export. Unlike PII,
 // preserving their shape has no audit value, so replace the entire value.
-const SENSITIVE_KEY = /^(password|passwd|passcode|pin|secret|client[._-]?secret|token|access[._-]?token|refresh[._-]?token|auth[._-]?token|authorization|bearer|cookie|set[._-]?cookie|jwt|card[._-]?number|pan|cvv|cvc|iban|account[._-]?(?:number|no))$/i;
+const SENSITIVE_KEY = /^(password|passwd|passcode|pin|secret|api[._-]?secret|client[._-]?secret|token|access[._-]?token|refresh[._-]?token|auth[._-]?token|authorization|bearer|cookie|set[._-]?cookie|jwt|card[._-]?number|pan|cvv|cvc|iban|account[._-]?(?:number|no))$/i;
 
 // National id numbers, matched on token boundaries so `iin_bin` and `bin_iin`
 // are caught but `binary` and `join` are not. A KZ ИИН identifies a person
@@ -54,13 +54,41 @@ const maskName = (s) => (s.length > 1 ? s[0] + '*'.repeat(s.length - 1) : '*');
 // merely sit next to separators. Require a literal `+`, or a bare 11-digit
 // KZ/RU mobile with no digit either side.
 const INLINE_PHONE = /(?<!\d)(?:\+\d[\d\s().-]{7,17}\d|[78]\d{10})(?!\d)/g;
+const IPV4 = /(?<![\w.])\d{1,3}(?:\.\d{1,3}){3}(?![\w]|\.\d)/g;
+const IPV6 = /(?<![\w:])[a-f\d]*:[a-f\d:.]+(?![\w:])/gi;
+const IP_KEY = /^(ip|ip_address|client_ip|remote_addr|x-forwarded-for|uip|_uip)$/i;
+const VERSION_KEY = /^(uafvl|uapv)$|version/i;
 
-function redactInline(s, path, hits) {
+function redactIps(s, path, hits, key = '') {
+  if (VERSION_KEY.test(key)) return s;
+  if (!IP_KEY.test(key)) {
+    const value = s.trim().replace(/^\[|\]$/g, '');
+    const ipv4 = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(value) && value.split('.').every((part) => Number(part) <= 255);
+    let ipv6 = false;
+    if (/^[a-f\d:.]+$/i.test(value) && value.includes(':')) {
+      try { new URL(`http://[${value}]/`); ipv6 = true; } catch { /* not IPv6 */ }
+    }
+    if (!ipv4 && !ipv6) return s;
+  }
+  const out = s.replace(IPV6, (m) => {
+    const address = m.replace(/\.+$/, '');
+    try { new URL(`http://[${address}]/`); } catch { return m; }
+    hits.push({ path, kind: 'ip' });
+    return '[redacted]' + m.slice(address.length);
+  });
+  return out.replace(IPV4, (m) => {
+    if (m.split('.').some((part) => Number(part) > 255)) return m;
+    hits.push({ path, kind: 'ip' });
+    return '[redacted]';
+  });
+}
+
+function redactInline(s, path, hits, key = '') {
   let out = s.replace(EMAIL, (m) => {
     hits.push({ path, kind: 'email' });
     return `${m[0]}***@***.${m.split('.').pop()}`;
   });
-  out = out.replace(INLINE_PHONE, (m) => {
+  out = redactIps(out, path, hits, key).replace(INLINE_PHONE, (m) => {
     if (!looksLikePhone(m)) return m;
     hits.push({ path, kind: 'phone' });
     return maskPhone(m);
@@ -71,7 +99,7 @@ function redactInline(s, path, hits) {
 // Request bodies and parser fallbacks often arrive as strings. Decode the two
 // structured formats browsers commonly send so key-based rules (including IIN)
 // still apply. Preserve the original byte-for-byte when nothing is redacted.
-function redactEmbedded(s, path, hits) {
+function redactEmbedded(s, path, hits, key = '', urlValues = false) {
   const trimmed = s.trim();
 
   if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
@@ -89,18 +117,23 @@ function redactEmbedded(s, path, hits) {
     try {
       const form = new URLSearchParams(s);
       const before = hits.length;
+      const maskedForm = new URLSearchParams();
+      const keys = new Map();
       for (const [key, value] of [...form]) {
-        const fieldPath = path ? `${path}.${key}` : key;
-        const masked = redactValue(key, value, fieldPath, hits);
-        if (masked !== value) form.set(key, masked);
+        const maskedKey = redactKey(key, path, hits, keys);
+        const fieldPath = path ? `${path}.${maskedKey}` : maskedKey;
+        const masked = urlValues && KEEP.test(key)
+          ? redactEmbedded(value, fieldPath, hits, key, true)
+          : redactValue(key, value, fieldPath, hits);
+        maskedForm.append(maskedKey, masked);
       }
-      if (hits.length > before) return form.toString();
+      if (hits.length > before) return maskedForm.toString();
     } catch {
       // Fall through to inline masking.
     }
   }
 
-  return redactInline(s, path, hits);
+  return redactInline(s, path, hits, key);
 }
 
 function redactValue(key, value, path, hits) {
@@ -119,39 +152,138 @@ function redactValue(key, value, path, hits) {
     return HAS_EMAIL.test(s) ? maskEmail(s) : looksLikePhone(s) ? maskPhone(s) : maskName(s);
   }
   if (typeof value !== 'string') return value;
-  if (looksLikePhone(s)) { hits.push({ path, kind: 'phone' }); return maskPhone(s); }
-  const inline = redactEmbedded(s, path, hits);
+  try {
+    const u = new URL(s);
+    if (u.protocol === 'http:' || u.protocol === 'https:') return redactUrl(s, hits, path);
+  } catch { /* not an absolute HTTP(S) URL */ }
+  if (looksLikePhone(s)) {
+    const ip = redactIps(s, path, hits, key);
+    if (ip !== s) return ip;
+    hits.push({ path, kind: 'phone' });
+    return maskPhone(s);
+  }
+  const inline = redactEmbedded(s, path, hits, key);
   if (inline !== s) return inline;
   return value;
+}
+
+function redactKey(key, path, hits, keys) {
+  const before = hits.length;
+  const masked = redactInline(key, path, hits);
+  let unique = masked;
+  for (let n = 2; keys.has(unique) && keys.get(unique) !== key; n++) unique = `${masked}#${n}`;
+  keys.set(unique, key);
+  for (let i = before; i < hits.length; i++) hits[i].path = path ? `${path}.${unique}` : unique;
+  return unique;
 }
 
 function walk(obj, path, hits) {
   if (Array.isArray(obj)) return obj.map((v, i) => redactValue('', v, `${path}[${i}]`, hits));
   const out = {};
-  for (const [k, v] of Object.entries(obj)) out[k] = redactValue(k, v, path ? `${path}.${k}` : k, hits);
+  const keys = new Map();
+  for (const [k, v] of Object.entries(obj)) {
+    const key = redactKey(k, path, hits, keys);
+    out[key] = redactValue(k, v, path ? `${path}.${key}` : key, hits);
+  }
   return out;
 }
 
-function redactUrl(url, hits) {
-  let u;
-  try { u = new URL(url); } catch { return url; }
-  let touched = false;
-  for (const [k, v] of [...u.searchParams]) {
-    const masked = redactValue(k, v, `url.${k}`, hits);
-    if (masked !== v) { u.searchParams.set(k, masked); touched = true; }
+function redactSegments(s, field, hits) {
+  const decode = (s) => { try { return decodeURIComponent(s); } catch { return s; } };
+  const encoded = s.split('/');
+  const parts = encoded.map(decode);
+  return parts.map((part, i) => {
+    const key = parts[i - 1] || '';
+    const masked = redactValue(KEEP.test(key) ? '' : key, part, `${field}.${i}`, hits);
+    return masked === part ? encoded[i] : encodeURIComponent(masked);
+  }).join('/');
+}
+
+export function redactUrl(url, hits, path = 'url') {
+  if (!url) return url;
+  const before = hits.length;
+  const structured = redactStructuredUrl(url, hits, path);
+  // The authority is already handled. Scan individual tail components so URL
+  // delimiters cannot become part of an email's local part.
+  const masked = structured.replace(/^([a-z][a-z\d+.-]*:\/\/[^/?#]*)([\s\S]*)$/i, (_url, prefix, tail) =>
+    prefix + tail.split(/([/?#&=])/).map((part) => redactEncodedInline(part, path, hits)).join(''));
+  for (let i = before; i < hits.length; i++) hits[i].inUrl = true;
+  return masked;
+}
+
+function redactEncodedInline(s, path, hits) {
+  // Keep offsets into the original so decoding nested markers never changes
+  // the encoding of text outside a masked match.
+  const offsets = [];
+  const decoded = s.replace(/%(?:25)*(?:2b|40|5b|5d|3a|2f|3f|23|26|3d)|[\s\S]/gi, (m, offset) => {
+    offsets.push(offset);
+    return m.length === 1 ? m : String.fromCharCode(parseInt(m.slice(-2), 16));
+  });
+  offsets.push(s.length);
+  const prefix = decoded.match(/^[a-z][a-z\d+.-]*:\/\/[^/?#]*/i)?.[0].length || 0;
+  let out = '', end = 0;
+  for (const component of decoded.slice(prefix).matchAll(/[^/?#&=]+/g)) {
+    for (const match of component[0].matchAll(new RegExp(`${EMAIL.source}|${INLINE_PHONE.source}`, 'g'))) {
+      const masked = redactInline(match[0], path, hits);
+      if (masked === match[0]) continue;
+      const start = prefix + component.index + match.index;
+      out += s.slice(offsets[end], offsets[start]) + encodeURIComponent(masked);
+      end = start + match[0].length;
+    }
   }
-  return touched ? u.toString() : url;
+  return out + s.slice(offsets[end]);
+}
+
+function redactStructuredUrl(url, hits, path) {
+  let u;
+  try { u = new URL(url); } catch { return redactEmbedded(String(url), path, hits); }
+  const before = hits.length;
+  const hostname = u.hostname.replace(/^\[|\]$/g, '');
+  if (redactValue('', hostname, `${path}.host`, hits) !== hostname) u.hostname = 'redacted.invalid';
+  u.username = redactValue('username', u.username, `${path}.authority`, hits);
+  u.password = redactValue('password', u.password, `${path}.authority`, hits);
+  u.pathname = redactSegments(u.pathname, `${path}.path`, hits);
+  const search = new URLSearchParams();
+  let searchChanged = false;
+  for (const [k, v] of u.searchParams) {
+    const key = redactInline(k, `${path}.query`, hits);
+    const masked = KEEP.test(k) ? redactEmbedded(v, `${path}.${key}`, hits) : redactValue(k, v, `${path}.${key}`, hits);
+    search.append(key, masked);
+    if (key !== k || masked !== v) searchChanged = true;
+  }
+  if (searchChanged) u.search = search.toString();
+  const hash = u.hash.slice(1);
+  const query = hash.indexOf('?');
+  if (query >= 0) {
+    u.hash = redactSegments(hash.slice(0, query), `${path}.fragment`, hits) + '?' +
+      redactEmbedded(hash.slice(query + 1), `${path}.fragment`, hits, '', true);
+  } else if (hash.includes('=')) {
+    u.hash = redactEmbedded(hash, `${path}.fragment`, hits, '', true);
+  } else {
+    u.hash = redactSegments(hash, `${path}.fragment`, hits);
+  }
+  return hits.length > before ? u.toString() : url;
 }
 
 /**
- * @returns {{event: object, hits: Array<{path:string,kind:string}>}}
- * `hits` is the audit finding - PII in a URL query is high severity always.
+ * @returns {{event: object, hits: Array<{path:string,kind:string,inUrl?:boolean}>}}
+ * `hits` is the audit finding - PII in a URL is high severity always.
  */
 export function redactEvent(event) {
   const hits = [];
   const out = { ...event };
+  if (typeof out.event === 'string') {
+    out.event = out.event.replace(/^([A-Z]+ )(\/.*)$/, (_name, method, path) => {
+      const before = hits.length;
+      const masked = redactSegments(path, 'event.path', hits);
+      for (let i = before; i < hits.length; i++) hits[i].inUrl = true;
+      return method + masked;
+    });
+    out.event = redactInline(out.event, 'event', hits);
+  }
   if (out.params) out.params = walk(out.params, '', hits);
   if (out.url) out.url = redactUrl(out.url, hits);
+  if (out.page) out.page = redactUrl(out.page, hits, 'page');
   if (out.raw) out.raw = redactEmbedded(String(out.raw), 'raw', hits);
   out.redacted = hits.length > 0;
   return { event: out, hits };

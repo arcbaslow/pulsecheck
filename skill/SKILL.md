@@ -39,7 +39,7 @@ or a markdown plan).
    - **Consent**: events sent while the relevant GCM storage was `denied`;
      vendors firing before any consent default was set.
    - **PII**: `redacted:true` lines - report field and location (already
-     masked); PII in URL query = high severity always.
+     masked); PII in a URL = high severity always.
    - **Naming**: event names against snake_case `{object}_{action}`
      convention (or the plan's convention if a plan is provided); mixed
      languages, spaces, camelCase mixed with snake_case.

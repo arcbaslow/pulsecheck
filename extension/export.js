@@ -3,7 +3,7 @@
 // Both are built from the same redacted event list. Redaction runs here,
 // once, before either file exists.
 
-import { redactEvent } from './redact.js';
+import { redactEvent, redactUrl } from './redact.js';
 
 const SCHEMA = 1;
 const TOOL_VERSION = '0.1.1';
@@ -67,7 +67,7 @@ export function buildSession({ startedAt, page, notes = '', userAgent = '', even
     // Where the session began, not where it ended. The panel tracks the
     // current page, so passing that through would label a session that
     // navigated with its last URL - and name the export file after it too.
-    page: (out.length && out[0].page) || page,
+    page: (out.length && out[0].page) || redactUrl(page, [], 'page'),
     userAgent,
     notes,
     // What the recorder was set to. Without this, "no API calls in the dump"
@@ -121,7 +121,9 @@ function checks(events, hits) {
 
   const piiByPath = new Map();
   for (const h of hits) {
-    const p = piiByPath.get(h.path) || { path: h.path, kind: h.kind, count: 0, seqs: [], inUrl: h.path.startsWith('url.') };
+    const p = piiByPath.get(h.path) || { path: h.path, kinds: new Set(), count: 0, seqs: [], inUrl: false };
+    p.kinds.add(h.kind);
+    p.inUrl ||= h.inUrl === true || /^(url|page)\./.test(h.path);
     p.count++;
     if (p.seqs.length < 5) p.seqs.push(h.seq);
     piiByPath.set(h.path, p);
@@ -132,7 +134,7 @@ function checks(events, hits) {
     top: [...byName.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 15),
     dupes,
     violations,
-    pii: [...piiByPath.values()].sort((a, b) => b.count - a.count),
+    pii: [...piiByPath.values()].map(({ kinds, ...p }) => ({ ...p, kind: [...kinds].join(', ') })).sort((a, b) => b.count - a.count),
     unparsed: events.filter((e) => e.vendor === 'unparsed').length,
     generic: events.filter((e) => e.vendor === 'generic').length,
   };
@@ -166,7 +168,7 @@ export function toMarkdown(session) {
     ['User agent', header.userAgent],
     ['Dump schema', `v${header.schema} (Pulsecheck ${header.version})`],
   ]));
-  L.push('', 'PII was masked before this file was written. Every number below is derivable from the timeline at the end of the document.', '');
+  L.push('', 'Pattern-based redaction masks detected emails, phones and IP addresses, plus values under recognised personal-identifier, person-name and secret keys in parameters, bodies, request URLs, page URLs and URL-valued parameters (including paths and fragments). IP detection applies to whole trimmed addresses or values under IP-like keys, excluding uafvl, uapv and keys containing version. Every event name undergoes inline pattern detection; paths in METHOD /path names use the same segment rules as URL paths. Client ids and other audit identifiers are kept by design. Event names and page_name are not treated as person-name keys. Detection is incomplete; review before sharing. Scenario notes and the user-agent string are not redacted. Every number below is derivable from the timeline at the end of the document.', '');
 
   L.push('## Inventory', '');
   L.push(c.vendors.length
@@ -186,7 +188,7 @@ export function toMarkdown(session) {
   L.push(`- Events sent while the relevant storage was denied: **${c.violations.length}**` +
     (c.violations.length ? '\n' + c.violations.slice(0, 20).map(({ e, key }) => `  - seq ${e.seq}: ${e.vendor} \`${e.event}\` with \`${key}=denied\``).join('\n') : ''));
   L.push(`- Sensitive fields (masked): **${c.pii.length}**` +
-    (c.pii.length ? '\n' + c.pii.map((p) => `  - \`${p.path}\` - ${p.kind}, ${p.count}x${p.inUrl ? ', **in the URL query string**' : ''} (seq ${p.seqs.join(', ')})`).join('\n') : ''));
+    (c.pii.length ? '\n' + c.pii.map((p) => `  - \`${p.path}\` - ${p.kind}, ${p.count}x${p.inUrl ? ', **in a URL**' : ''} (seq ${p.seqs.join(', ')})`).join('\n') : ''));
   L.push(`- Not recognised by any parser: **${c.unparsed}**, caught by the generic parser: **${c.generic}**`);
   L.push('');
 

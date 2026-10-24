@@ -3,11 +3,24 @@
 // no host permissions). Buffers pushes; the panel drains it by polling.
 (() => {
   if (window.__pulsecheck) {
-    window.__pulsecheck.scan();
+    window.__pulsecheck.renew();
     return 'rearmed';
   }
 
   const buf = [];
+  const RECORDING_LEASE_MS = 60000;
+  let expiresAt = Date.now() + RECORDING_LEASE_MS;
+  let timer = null;
+  const stop = () => {
+    expiresAt = 0;
+    buf.length = 0;
+    clearInterval(timer);
+    timer = null;
+  };
+  const recording = () => {
+    if (expiresAt && Date.now() >= expiresAt) stop();
+    return expiresAt > 0;
+  };
 
   // JSON-safe clone: cuts cycles, DOM nodes, functions, and runaway depth.
   const safe = (v, depth = 0, seen = new Set()) => {
@@ -29,15 +42,16 @@
   };
 
   const record = (name, msg) => {
+    if (!recording()) return;
     if (buf.length > 5000) return; // panel drains every 500ms; this is a runaway guard
     try { buf.push({ ts: Date.now(), layer: name, page: location.href, msg: safe(msg) }); } catch { /* never break the page */ }
   };
 
-  const wrap = (arr, name) => {
+  const wrap = (arr, name, snapshot) => {
     if (!arr || typeof arr.push !== 'function' || arr.push.__pulsecheck) return;
     if (!arr.__pulsecheckSnapshot) {
       Object.defineProperty(arr, '__pulsecheckSnapshot', { value: true, enumerable: false });
-      for (const m of arr) record(name, m); // pushes that happened before injection
+      if (snapshot) for (const m of arr) record(name, m); // pushes that happened before injection
     }
     const orig = arr.push.bind(arr);
     const patched = function (...args) {
@@ -60,20 +74,33 @@
   // GTM replaces dataLayer.push with its own after gtm.js loads, and SPAs
   // create layers late - so re-arm on a timer instead of hooking once.
   // ponytail: 1s poll; switch to a Proxy on window if a client ever needs sub-second fidelity.
-  const scan = () => {
+  const scan = (snapshot = true) => {
+    if (!recording()) return;
     for (const key of Object.keys(window)) {
       try {
         if (!/datalayer/i.test(key) && key !== 'digitalData') continue;
-        if (Array.isArray(window[key])) wrap(window[key], key);
+        if (Array.isArray(window[key])) wrap(window[key], key, snapshot);
       } catch { /* cross-origin or throwing getter */ }
     }
+  };
+  const renew = () => {
+    const active = recording();
+    expiresAt = Date.now() + RECORDING_LEASE_MS;
+    if (timer === null) timer = setInterval(scan, 1000);
+    // Do not replay entries accumulated while paused or without a panel.
+    if (!active) scan(false);
   };
 
   window.__pulsecheck = {
     scan,
-    drain: () => ({ page: location.href, items: buf.splice(0, buf.length) }),
+    renew,
+    stop,
+    drain: () => {
+      renew();
+      return { page: location.href, items: buf.splice(0, buf.length) };
+    },
   };
   scan();
-  setInterval(scan, 1000);
+  timer = setInterval(scan, 1000);
   return 'armed';
 })();

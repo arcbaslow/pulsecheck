@@ -55,8 +55,14 @@ A session is held in the memory of the DevTools panel. It is discarded when
 DevTools is closed, when the extension is reloaded, or when the user clears the
 timeline.
 
+The inspected page also holds a temporary buffer of data layer messages. The
+panel drains it every 500 ms while recording. Pausing or closing the panel
+explicitly stops the tap and clears this buffer. If that stop cannot run, a
+60-second fallback recording lease expires and clears it at the next timer tick or
+push. No further pushes are recorded until the panel renews the lease.
+
 Pulsecheck does not use `chrome.storage`, `localStorage`, `sessionStorage` or
-IndexedDB, and retains no session data after the panel closes.
+IndexedDB. Page-owned data layer arrays are not cleared by Pulsecheck.
 
 ## 4. Exports
 
@@ -73,21 +79,49 @@ Before an export is generated, Pulsecheck masks values it is able to identify.
 The panel display is not masked, as it shows the user their own session. The
 following are masked:
 
-- email addresses and telephone numbers wherever they appear, including within
-  JSON and form-encoded request bodies;
+- detected email addresses, telephone numbers and IPv4/IPv6 addresses in string
+  values in parameters, including JSON and form-encoded request bodies;
+  request URLs, page URLs and absolute HTTP(S) URL-valued parameters also have
+  their authority, query parameters, path segments and fragments inspected;
 - values under keys denoting a person or a personal identifier, among them
   `user_id`, `email`, `phone`, `first_name`, `surname`, `iin` and `passport`,
   which are masked while retaining their shape;
-- values under keys denoting a secret, among them `password`, `token`,
+- values under keys denoting a secret, among them `password`, `api_secret`,
+  `apiSecret`, `secret`, `token`,
   `authorization`, `cookie`, `card_number`, `cvv` and `iban`, which are
   replaced in full with `[redacted]`.
 
-Redaction operates principally on key names and is for that reason incomplete.
-Values carried under unrecognised key names, personal information entered into
-free-text fields, and IP addresses in query strings are not detected. Certain
-identifiers, among them `cid`, `event_id`, `insert_id` and `api_key`, are
-retained deliberately, because masking them would prevent the audit from being
-performed.
+URL-valued parameters receive URL-aware handling after parsing, including
+values in JSON and form-encoded bodies. Hosts detected as IP addresses or phone
+numbers are replaced with `redacted.invalid`.
+JSON and form values decoded from parser-error `raw` bodies receive the same
+URL-aware handling. Parser-error `raw` bodies receive JSON/form decoding and
+inline detection; standalone URL strings and
+multipart parts do not receive URL-aware handling.
+
+IP detection applies only to whole trimmed address values or values under
+IP-like keys (`ip`, `ip_address`, `client_ip`, `remote_addr`, `x-forwarded-for`,
+`uip`, `_uip`). It excludes `uafvl`, `uapv` and keys containing `version` to avoid
+mistaking software versions for IP addresses.
+
+Path segments use the previous segment as their key. This can mask ordinary
+identifiers: `/pin/123456789` is masked as a secret and `/order/87771234567` as a
+phone number. This trade-off favours hiding sensitive values over preserving
+every path identifier.
+
+Redaction uses key names and value patterns and is incomplete. Unrecognised
+formats, unnamed tokens and personal information in free text can escape
+detection. Certain identifiers, among them client ids (`cid`), `event_id`,
+`insert_id` and `api_key`, are retained deliberately because the audit needs
+them. In request URLs, inline detection can still mask phone-shaped KEEP values
+(for example, `_p=81234567890`), while the same value in `params` is retained;
+this favours hiding possible phone numbers over preserving unusual identifiers.
+Every event name undergoes inline pattern detection, and paths in
+`METHOD /path` names use the same segment rules as URL paths. Event names and
+audit-subject fields such as `event_name`, `page_name`, `item_name` and
+`product_name` are not treated as person-name keys; their string values still
+undergo pattern-based detection. Scenario notes and the user-agent string are
+not redacted.
 
 Users must review an export before disclosing it to any third party. Pulsecheck
 is alpha software and its redaction is a mitigation, not a guarantee.
@@ -101,9 +135,13 @@ records the message and then calls the original method, leaving the behaviour of
 the page unchanged. The replacement is defined as non-enumerable and does not
 appear in `Object.keys(dataLayer)` or in the page's own enumeration.
 
-The script applies only to the tab on which DevTools is open, applies only while
-the panel is open, and is removed when the page reloads. No other part of the
-page is modified.
+The script applies only to the inspected tab. Recording and scanning stop on
+pause or panel close, with the 60-second lease as a fallback if the explicit
+stop cannot run. Wrappers can remain installed until the page reloads, but pass
+pushes through without recording while stopped. Resuming an existing tap skips
+entries accumulated while stopped. If the page loaded while paused, resuming
+injects a fresh tap whose first scan records that page's existing data layer
+entries with the resume timestamp. No other part of the page is modified.
 
 ## 7. Permissions
 
