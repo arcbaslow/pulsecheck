@@ -107,8 +107,8 @@ are mechanical starting points - the analysis is the LLM's job.
   you choose to hand over.
 - **PII is masked before the file exists**, never after. Emails, phone
   numbers, person names, national id numbers (ИИН/БИН, ИНН) and user
-  identifiers are masked in parameters, URL query strings and captured
-  request bodies. The unmasked value never reaches the export.
+  identifiers are masked in parameters, URLs (including paths and fragments)
+  and captured request bodies. The unmasked value never reaches the export.
 - **Credential and payment-secret fields are removed completely.** Passwords,
   tokens, card numbers, CVV values and similar named fields become
   `[redacted]`.
@@ -119,7 +119,7 @@ are mechanical starting points - the analysis is the LLM's job.
   stream checks are built on, and masking them would break the audit without
   protecting anyone.
 - **Where PII was found is itself a finding**, reported with its location.
-  PII in a URL query string is always high severity.
+  PII in a URL is always high severity.
 
 ## Limits worth knowing
 

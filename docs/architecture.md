@@ -37,6 +37,13 @@ outgrows what JSDoc can describe.
    The panel drains the tap's buffer every 500 ms; timestamps are taken at
    push time, not at drain time. Re-armed on navigation and once a second,
    because gtm.js replaces `dataLayer.push` with its own after it loads.
+   Each drain renews a 60-second fallback recording lease. Pause and panel `pagehide`
+   explicitly stop the tap, clear its buffer and cancel scanning. If the panel
+   disappears without stopping it, lease expiry does the same at the next timer
+   tick or push. Installed wrappers then pass through without recording.
+   Resuming an existing tap skips entries accumulated while stopped. If the page
+   loaded while paused, resuming injects a fresh tap whose first scan records
+   that page's existing dataLayer entries with the resume timestamp.
 3. **Consent**: derived in the panel from GCM `default`/`update` messages
    seen in the dataLayer stream; current consent state is stamped onto every
    subsequent event.
@@ -44,6 +51,10 @@ outgrows what JSDoc can describe.
    LLM: inventory, mechanical checks, full timeline) + `session.jsonl`
    (contract: docs/dump-format.md), saved via a blob download or copied to
    the clipboard. Nothing is persisted anywhere else.
+   URL path segments and paths in `METHOD /path` event names use the previous
+   segment as the redaction key: `/pin/123456789` is masked as a secret and
+   `/order/87771234567` as a phone number. This trade-off can mask ordinary path
+   identifiers while protecting sensitive values.
 
 ## Why these choices
 
@@ -54,8 +65,8 @@ outgrows what JSDoc can describe.
   script needs `scripting` plus host permissions, which is the "read and
   change all your data on all websites" install warning - on a tool whose
   whole pitch is that it does not exfiltrate anything. DevTools eval reaches
-  the same world with an empty permissions array. Cost: the tap only exists
-  while the panel is open, which matches the recorder model anyway.
+  the same world with an empty permissions array. The tap records only under
+  a lease renewed by the panel; inactive wrappers remain until page reload.
 - **Not webRequest**: MV3 webRequest has no response bodies and request
   bodies are awkward; we need request payloads (that is where events live).
 - **Parsers in the panel, declarative**: matchers are data (host/path/query

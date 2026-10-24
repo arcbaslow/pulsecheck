@@ -51,10 +51,10 @@ therefore always identical, in both outputs. `seq` is what findings cite.
 | `source` | enum | `network` \| `datalayer` \| `consent` |
 | `transport` | enum? | network only: `fetch` \| `xhr` \| `beacon` \| `pixel` \| `other` |
 | `vendor` | string | `ga4`, `meta`, `metrica`, `amplitude`, `tiktok`, `generic`, `unparsed`, `datalayer`, `consent`, `request` |
-| `event` | string | vendor event name as sent; dataLayer: value of `event` key or `(message)` |
+| `event` | string | vendor event name; dataLayer: value of `event` key or `(message)`; inline patterns are masked, and `METHOD /path` names also use URL path-segment rules |
 | `params` | object | flat-ish decoded params; vendor-native keys, not normalized |
 | `url` | string? | network only: full request URL (query preserved, body params merged into `params`) |
-| `page` | string | page URL at capture time (SPA navigations update it) |
+| `page` | string | page URL at capture time (SPA navigations update it), redacted using the same URL rules as `url` and the session header's `page` |
 | `consent` | object? | GCM state stamped at send time, once consent capture is on |
 | `redacted` | bool | true if the redaction pass masked anything in this line |
 | `raw` | string? | only for `vendor:"unparsed"` - undecoded body, truncated 4 KB |
@@ -84,14 +84,32 @@ Excluded from the duplicate check - a polling endpoint is not a double-count.
 
 ## Redaction
 
-Runs before export, never after. Masks emails, phone numbers, and
-name-like values in `params` and `url` query (`d***@***.com`,
-`+7*******42`), sets `redacted:true`. The pre-redaction value never leaves
-the panel. Detected PII locations are themselves an audit finding - the
-mask preserves enough shape to prove the leak without carrying it.
+Runs before export, never after. Masks detected emails, phone numbers, IP
+addresses and values under recognised personal-identifier, person-name and
+national-id keys in `params`, including JSON and form-encoded bodies.
+Request URLs, page URLs (including the session header) and absolute HTTP(S)
+URL-valued parameters receive authority, query, path and fragment checks.
+Path segments use the previous segment as their key; this also applies to
+paths in `METHOD /path` event names. Every event name receives inline pattern
+detection, but is not treated as a person-name value.
+
+IP detection applies to whole trimmed addresses (including bracketed IPv6)
+or values under IP-like keys (`ip`, `ip_address`, `client_ip`, `remote_addr`,
+`x-forwarded-for`, `uip`, `_uip`), excluding `uafvl`, `uapv` and keys containing
+`version`. URL hosts detected as IP addresses or phone numbers become
+`redacted.invalid`. Parser-error `raw` bodies
+receive JSON/form decoding and inline detection, without URL-aware handling
+of standalone URL strings or multipart parts.
+
+Masking sets `redacted:true` on affected event lines. Detected PII locations
+are themselves an audit finding; PII in a URL is always high severity.
+Shape-preserving masks (`d***@***.com`, `+7*******42`) retain evidence of a leak.
 
 Named credential and payment-secret fields are replaced with `[redacted]`
 rather than shape-preserving masks.
+Client ids and other audit identifiers are retained deliberately. Detection
+is incomplete; review exports before sharing. Scenario notes and the
+user-agent string are not redacted.
 
 ## session.md (companion, human- and LLM-facing)
 

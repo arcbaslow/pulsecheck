@@ -227,7 +227,7 @@ const TAP = readFileSync(new URL('../extension/tap.js', import.meta.url), 'utf8'
 
 /** Fake page: `window` is the sandbox global, so Object.keys(window) sees our layers. */
 function page(globals = {}) {
-  const ctx = { location: { href: 'https://example.kz/' }, setInterval: () => 0, JSON, Object, Array, Date, ...globals };
+  const ctx = { location: { href: 'https://example.kz/' }, setInterval: () => 0, clearInterval: () => {}, JSON, Object, Array, Date, ...globals };
   ctx.window = ctx;
   vm.createContext(ctx);
   vm.runInContext(TAP, ctx);
@@ -236,6 +236,64 @@ function page(globals = {}) {
 // Values crossing the vm boundary carry the sandbox's prototypes, so pull them
 // into this realm before comparing.
 const drain = (ctx) => JSON.parse(JSON.stringify(ctx.window.__pulsecheck.drain())).items;
+
+function leasedPage() {
+  let now = 1000;
+  let nextTimer = 0;
+  const timers = new Map();
+  const ctx = page({
+    dataLayer: [],
+    Date: class extends Date { static now() { return now; } },
+    setInterval: (fn) => { timers.set(++nextTimer, fn); return nextTimer; },
+    clearInterval: (id) => timers.delete(id),
+  });
+  return { ctx, timers, advance: (ms) => { now += ms; } };
+}
+
+for (const expireBy of ['timer', 'push', 'drain']) {
+  t(`expired lease clears the buffer and stops recording (${expireBy})`, () => {
+    const { ctx, timers, advance } = leasedPage();
+    ctx.dataLayer.push({ event: 'before_expiry' });
+    advance(60000);
+    if (expireBy === 'timer') for (const fn of timers.values()) fn();
+    if (expireBy !== 'drain') {
+      ctx.dataLayer.push({ event: 'after_expiry' });
+      assert.equal(timers.size, 0, 'scanning stops');
+    }
+    assert.deepEqual(drain(ctx), [], 'expired items never reach the panel');
+    assert.equal(ctx.dataLayer.length, expireBy === 'drain' ? 1 : 2, 'page pushes still work');
+  });
+}
+
+t('recording retains buffered and new events through a delay under 60 seconds', () => {
+  const { ctx, advance } = leasedPage();
+  ctx.dataLayer.push({ event: 'before_delay' });
+  advance(59999);
+  ctx.dataLayer.push({ event: 'after_delay' });
+  assert.deepEqual(drain(ctx).map((item) => item.msg.event), ['before_delay', 'after_delay']);
+});
+
+t('each drain renews the recording lease', () => {
+  const { ctx, advance } = leasedPage();
+  for (let i = 0; i < 4; i++) {
+    advance(45000);
+    ctx.dataLayer.push({ event: 'still_recording' });
+    assert.deepEqual(drain(ctx).map((item) => item.msg.event), ['still_recording']);
+  }
+});
+
+t('explicit stop clears the buffer and resumes without replaying paused entries', () => {
+  const { ctx, timers } = leasedPage();
+  ctx.dataLayer.push({ event: 'discard' });
+  ctx.__pulsecheck.stop();
+  ctx.dataLayer.push({ event: 'paused' });
+  ctx.digitalData = [{ event: 'created_while_paused' }];
+  ctx.__pulsecheck.scan();
+  assert.equal(timers.size, 0);
+  assert.deepEqual(drain(ctx), []);
+  ctx.digitalData.push({ event: 'resumed' });
+  assert.deepEqual(drain(ctx).map((item) => item.msg.event), ['resumed']);
+});
 
 t('snapshots pushes that happened before injection', () => {
   const ctx = page({ dataLayer: [{ 'gtm.start': 1, event: 'gtm.js' }, { event: 'form_start' }] });
@@ -354,6 +412,218 @@ t('PII in the URL query is masked and located', () => {
   assert.ok(hits.some((h) => h.path.startsWith('url.')));
 });
 
+for (const key of ['api_secret', 'apiSecret', 'api-secret', 'secret']) {
+  t(`${key} is fully masked`, () => {
+    const { event } = redactEvent({ params: { [key]: 'synthetic-secret' } });
+    assert.equal(event.params[key], '[redacted]');
+  });
+}
+
+for (const ip of ['192.0.2.1', '2001:db8::1', '::1', '2001:db8:0:0:0:0:0:1', '::ffff:192.0.2.1']) {
+  t(`IP address ${ip} is masked in string values`, () => {
+    const { event, hits } = redactEvent({
+      params: { ip, bare: ` ${ip} `, text: `address [${ip}]`, body: JSON.stringify({ ip, cid: ip }) },
+      raw: `ip=${encodeURIComponent(ip)}&cid=${encodeURIComponent(ip)}`,
+    });
+    assert.equal(event.params.ip, '[redacted]');
+    assert.equal(event.params.bare, ' [redacted] ');
+    assert.equal(event.params.text, `address [${ip}]`, 'ordinary text is not scanned for embedded IPs');
+    assert.equal(JSON.parse(event.params.body).ip, '[redacted]');
+    assert.equal(JSON.parse(event.params.body).cid, ip, 'deliberate exceptions also apply in JSON');
+    assert.equal(new URLSearchParams(event.raw).get('ip'), '[redacted]');
+    assert.equal(new URLSearchParams(event.raw).get('cid'), ip);
+    assert.ok(hits.some((hit) => hit.kind === 'ip'));
+  });
+}
+
+for (const text of ['192.0.2.1:443', 'address:192.0.2.1', 'address 192.0.2.1.', 'address 2001:db8::1.']) {
+  t(`IP addresses next to punctuation are masked only under IP-like keys: ${text}`, () => {
+    const { event } = redactEvent({ params: { ip: text, text } });
+    assert.ok(!event.params.ip.includes('192.0.2.1'));
+    assert.ok(!event.params.ip.includes('2001:db8::1'));
+    assert.equal(event.params.text, text);
+  });
+}
+
+for (const key of ['ip', 'ip_address', 'client_ip', 'remote_addr', 'x-forwarded-for', 'uip', '_uip']) {
+  t(`IP-like key ${key} masks addresses within its value`, () => {
+    const { event, hits } = redactEvent({ params: { [key]: '203.0.113.5, 2001:db8::1' } });
+    assert.equal(event.params[key], '[redacted], [redacted]');
+    assert.equal(hits.filter((hit) => hit.kind === 'ip').length, 2);
+  });
+}
+
+for (const [key, value] of Object.entries({ uafvl: 'Not_A Brand;8.0.0.0', uapv: '8.0.0.0', app_version: '5.12.0.3', client_version: '203.0.113.5' })) {
+  t(`version field ${key} survives without IP findings`, () => {
+    const [e] = run('https://www.google-analytics.com/g/collect?v=2&tid=G-ABC123&en=page_view&' + new URLSearchParams({ [key]: value }));
+    const s = buildSession({ startedAt: 1, page: 'https://shop.example/', events: [{ ...e, seq: 1, ts: 1, source: 'network' }] });
+    assert.equal(s.events[0].params[key], value);
+    assert.equal(new URL(s.events[0].url).searchParams.get(key), value);
+    assert.equal(s.checks.pii.length, 0, 'no false high-severity IP-in-URL findings');
+  });
+}
+
+t('bare IPv4 and GA4 uip values are masked', () => {
+  const { event, hits } = redactEvent({ params: { other: '203.0.113.5' }, url: 'https://www.google-analytics.com/g/collect?uip=203.0.113.5' });
+  assert.equal(event.params.other, '[redacted]');
+  assert.equal(new URL(event.url).searchParams.get('uip'), '[redacted]');
+  assert.equal(hits.filter((hit) => hit.kind === 'ip').length, 2);
+});
+
+for (const name of ['lead_jane@example.com', 'lead +77012345678', '203.0.113.5', 'Lead']) {
+  t(`event names undergo inline detection: ${name}`, () => {
+    const { event, hits } = redactEvent({ event: name });
+    assert.equal(event.redacted, name !== 'Lead');
+    assert.equal(hits.length, name === 'Lead' ? 0 : 1);
+    if (name !== 'Lead') assert.notEqual(event.event, name);
+  });
+}
+
+for (const [path, kind] of [['/pin/123456789', 'secret'], ['/order/87771234567', 'phone']]) {
+  t(`path segment context trade-off: ${path}`, () => {
+    const { event, hits } = redactEvent({ event: 'GET ' + path, url: 'https://shop.example' + path });
+    assert.equal(event.event, 'GET ' + new URL(event.url).pathname);
+    assert.equal(hits.filter((hit) => hit.kind === kind).length, 2);
+  });
+}
+
+for (const host of ['192.0.2.1', '[2001:db8::1]']) {
+  t(`IP address URL host is masked: ${host}`, () => {
+    const { event } = redactEvent({ page: `https://${host}/checkout` });
+    assert.equal(new URL(event.page).hostname, 'redacted.invalid');
+  });
+}
+
+t('bracketed IPv6 request host is masked alongside its URL', () => {
+  const req = toRequest({ url: 'https://[2001:db8::1]/profile' });
+  const { event, hits } = redactEvent({ url: req.url, params: { host: req.host } });
+  assert.equal(event.params.host, '[[redacted]]');
+  assert.equal(new URL(event.url).hostname, 'redacted.invalid');
+  assert.ok(hits.some((hit) => hit.path === 'host' && hit.kind === 'ip'));
+});
+
+for (const [query, key, values] of [
+  ['jane@example.com', 'j***@***.com', ['']],
+  ['jane@example.com=1', 'j***@***.com', ['1']],
+  ['+77012345678', ' 7********78', ['']],
+  ['jane@example.com=1&jane@example.com=2', 'j***@***.com', ['1', '2']],
+]) {
+  t(`URL-valued parameters mask query keys: ${query}`, () => {
+    const { event, hits } = redactEvent({ params: { page_location: 'https://shop.example/?' + query + '&cid=123.456' } });
+    const params = new URL(event.params.page_location).searchParams;
+    assert.deepEqual([...params.keys()], [...values.map(() => key), 'cid']);
+    assert.deepEqual(params.getAll(key), values);
+    assert.equal(params.get('cid'), '123.456');
+    assert.equal(hits.length, values.length);
+    assert.ok(!JSON.stringify({ event, hits }).includes(query.split('=')[0]));
+  });
+}
+
+for (const [authority, kind] of [
+  ['jane@example.com', 'name'], ['jane@example.com:8443', 'name'],
+  ['admin@shop.example', 'name'], ['user:synthetic-secret@shop.example', 'name'],
+  ['8701-234-56-78', 'phone'],
+]) {
+  t(`URL authority patterns are masked in parameters, JSON and nested queries: ${authority}`, () => {
+    const location = `https://${authority}/profile`;
+    const { event, hits } = redactEvent({
+      params: { page_location: location, body: JSON.stringify({ location }) },
+      url: 'https://shop.example/?' + new URLSearchParams({ next: location }),
+      page: location,
+    });
+    for (const masked of [event.params.page_location, JSON.parse(event.params.body).location,
+      new URL(event.url).searchParams.get('next'), event.page]) {
+      assert.ok(!masked.includes(authority));
+      assert.equal(new URL(masked).pathname, '/profile');
+      assert.equal(new URL(masked).host, kind === 'phone' ? 'redacted.invalid' : new URL(location).host);
+      if (new URL(location).password) assert.equal(decodeURIComponent(new URL(masked).password), '[redacted]');
+    }
+    assert.equal(event.redacted, true);
+    assert.equal(hits.filter((hit) => hit.kind === kind).length, 4);
+    if (new URL(location).password) assert.equal(hits.filter((hit) => hit.kind === 'secret').length, 4);
+  });
+}
+
+for (const [suffix, key, expected, kind] of [
+  ['?ev=a%3D1%26iin%3D900101300123', 'ev', 'a=1&iin=9***********', 'national_id'],
+  ['?_p=a%3D1%26iin%3D900101300123', '_p', 'a=1&iin=9***********', 'national_id'],
+  ['?ev=%7B%22name%22%3A%22Jane%22%7D', 'ev', '{"name":"J***"}', 'name'],
+  ['?ev=fn%3DJane', 'ev', 'fn=J***', 'identifier'],
+  ['?value=password%3Dsecretpw', 'value', 'password=%5Bredacted%5D', 'secret'],
+  ['?en={"iin":"900101300123"}', 'en', '{"iin":"9***********"}', 'national_id'],
+  ['?cid={"user_id":"user-123"}', 'cid', '{"user_id":"u*******"}', 'identifier'],
+  ['#value=a%3D1%26iin%3D900101300123', 'value', 'a=1&iin=9***********', 'national_id'],
+  ['#/a?ev={"iin":"900101300123"}', 'ev', '{"iin":"9***********"}', 'national_id'],
+]) {
+  t(`KEEP URL values receive embedded key-based redaction: ${suffix}`, () => {
+    const { event, hits } = redactEvent({ url: 'https://shop.example/' + suffix });
+    const url = new URL(event.url);
+    const params = suffix.startsWith('?') ? url.searchParams
+      : new URLSearchParams(url.hash.slice(url.hash.includes('?') ? url.hash.indexOf('?') + 1 : 1));
+    assert.equal(params.get(key), expected);
+    assert.ok(hits.some((hit) => hit.kind === kind));
+    assert.ok(hits.every((hit) => hit.inUrl));
+  });
+}
+
+for (const suffix of [
+  '/p',
+  '/#value=jane%40example.com',
+  '/#value=%5B%5Djane%2540example.com%5B%5D&safe=%2B%5B%5D',
+]) {
+  t(`URL inline fallback preserves authority and unrelated encoding: ${suffix}`, () => {
+    const location = 'https://user@shop.example.kz' + suffix;
+    const { event, hits } = redactEvent({ url: location, page: location });
+    assert.equal(event.url, event.page);
+    assert.equal(new URL(event.url).host, 'shop.example.kz');
+    assert.ok(event.url.startsWith('https://'));
+    assert.equal(new URL(event.url).pathname, suffix === '/p' ? '/p' : '/');
+    assert.ok(!decodeURIComponent(event.url).includes('jane@example.com'));
+    if (suffix.includes('safe=')) {
+      assert.ok(event.url.endsWith('&safe=%2B%5B%5D'));
+      assert.ok(event.url.includes('value=%5B%5Dj***%40***.com%5B%5D'));
+    }
+    assert.ok(hits.every((hit) => hit.inUrl));
+  });
+}
+
+for (const carrier of ['object', 'JSON', 'form']) {
+  t(`colliding masked ${carrier} keys preserve both values and distinct hit paths`, () => {
+    const payload = { 'jane@example.com': 'first', 'john@example.com': 'second' };
+    const { event, hits } = redactEvent({ params: { payload: carrier === 'object' ? payload
+      : carrier === 'JSON' ? JSON.stringify(payload) : new URLSearchParams(payload).toString() } });
+    const masked = carrier === 'object' ? event.params.payload
+      : carrier === 'JSON' ? JSON.parse(event.params.payload) : Object.fromEntries(new URLSearchParams(event.params.payload));
+    assert.deepEqual(masked, { 'j***@***.com': 'first', 'j***@***.com#2': 'second' });
+    assert.deepEqual(hits.map((hit) => hit.path), ['payload.j***@***.com', 'payload.j***@***.com#2']);
+  });
+}
+
+t('METHOD path findings are flagged as in-URL alongside request URL findings', () => {
+  const { hits } = redactEvent({ event: 'POST /api/u/jane@example.com', url: 'https://shop.example/api/u/jane@example.com' });
+  for (const path of ['event.path.3', 'url.path.3']) {
+    assert.ok(hits.some((hit) => hit.path === path && hit.kind === 'email' && hit.inUrl === true));
+  }
+});
+
+for (const suffix of [
+  '/jane%40example.com?api_secret=synthetic-secret#access_token=abc123&cid=123.456',
+  '/access_token/abc123#jane%40example.com',
+  '/192.0.2.1#2001:db8::1',
+  '/checkout#/reset?email=jane%40example.com&token=abc123',
+]) {
+  t(`request and page URLs redact paths and fragments: ${suffix}`, () => {
+    const url = 'https://shop.example' + suffix;
+    const { event } = redactEvent({ url, page: url });
+    assert.equal(event.url, event.page);
+    const decoded = decodeURIComponent(event.url);
+    for (const secret of ['jane@example.com', 'synthetic-secret', 'abc123', '192.0.2.1', '2001:db8::1']) {
+      assert.ok(!decoded.includes(secret), secret);
+    }
+    if (suffix.includes('cid=')) assert.ok(decoded.includes('cid=123.456'));
+  });
+}
+
 t('credentials and payment secrets are removed completely', () => {
   const { event, hits } = redactEvent({
     params: {
@@ -434,6 +704,133 @@ t('phone detector rejects id-shaped numbers', () => {
 });
 
 console.log('export');
+
+for (const [key, location, path] of [
+  ['page_location', 'https://jane@example.com:8443/p', 'authority'],
+  ['dl', 'https://8701-234-56-78/p', 'host'],
+  ['dl', 'https://shop.example/jane%40example.com', 'path.1'],
+  ['dl', 'https://shop.example/#jane%40example.com', 'fragment.0'],
+  ['dl', 'https://shop.example/?jane%40example.com=1', 'query'],
+]) {
+  t(`URL-valued ${key}.${path} is flagged as in-URL`, () => {
+    const s = buildSession({ startedAt: 1, page: 'https://shop.example/', events: [
+      { seq: 1, ts: 1, source: 'network', vendor: 'ga4', event: 'page_view', params: { [key]: location } },
+    ] });
+    assert.equal(s.checks.pii.find((hit) => hit.path === `${key}.${path}`)?.inUrl, true);
+  });
+}
+
+for (const suffix of [
+  '/en/jane@example.com',
+  '/#/en/jane@example.com',
+  '/value/%2B77012345678',
+  '/?value=jane@example.com',
+  '/?ev=jane@example.com&cid=1.2',
+  '/?en=%2B77012345678',
+  '/?_p=jane@example.com',
+  // KEEP in a fragment form receives embedded and inline detection.
+  '/#value=jane%40example.com',
+  '/#en=%2B77012345678',
+]) {
+  const location = 'https://shop.example' + suffix;
+  for (const [carrier, fields] of [
+    ['request URL', { url: location }],
+    ['page URL', { page: location }],
+    ['parameter', { params: { dl: location } }],
+    ['JSON body', { params: { body: JSON.stringify({ dl: location }) } }],
+    ['form body', { params: { body: new URLSearchParams({ dl: location }).toString() } }],
+    ['raw JSON', { raw: JSON.stringify({ dl: location }) }],
+    ['raw form', { raw: new URLSearchParams({ dl: location }).toString() }],
+  ]) {
+    t(`URL inline patterns in ${carrier} are absent from both exports: ${suffix}`, () => {
+      const s = buildSession({ startedAt: 1, page: 'https://shop.example/', events: [
+        { seq: 1, ts: 1, source: 'network', vendor: 'ga4', event: 'page_view', ...fields },
+      ] });
+      assert.ok(s.checks.pii.length > 0);
+      assert.ok(s.checks.pii.every((hit) => hit.inUrl));
+      for (const output of [toMarkdown(s), toJsonl(s)]) {
+        // Decode body and URL layers so encoded PII cannot evade the assertion.
+        let decoded = output;
+        for (let i = 0; i < 3; i++) decoded = decodeURIComponent(decoded);
+        assert.ok(!decoded.includes('jane@example.com'));
+        assert.ok(!decoded.includes('77012345678'));
+      }
+    });
+  }
+}
+
+for (const key of ['host', 'hostname', 'host_id', 'fragments', 'path']) {
+  t(`non-URL payload.${key} is not flagged as in-URL`, () => {
+    const s = buildSession({ startedAt: 1, page: 'https://shop.example/', events: [
+      { seq: 1, ts: 1, source: 'dataLayer', vendor: 'dataLayer', event: 'lead', params: { payload: { [key]: 'jane@example.com' } } },
+    ] });
+    assert.equal(s.checks.pii.find((hit) => hit.path === `payload.${key}`)?.inUrl, false);
+    assert.ok(!toMarkdown(s).includes('**in a URL**'));
+  });
+}
+
+for (const fields of [
+  { params: { payload: { 'jane@example.com': 'jane@example.com' } } },
+  { params: { body: '{"jane@example.com":"jane@example.com"}' } },
+  { params: { body: 'jane%40example.com=jane%40example.com&jane%40example.com=1' } },
+  { params: { dl: 'https://shop.example/#jane@example.com=1' } },
+  { raw: '{"jane@example.com":1}' },
+  { raw: 'jane%40example.com=1' },
+]) {
+  t(`PII in object and form keys is absent from exports and hit paths: ${JSON.stringify(fields)}`, () => {
+    const s = buildSession({ startedAt: 1, page: 'https://shop.example/', events: [
+      { seq: 1, ts: 1, source: 'network', vendor: 'ga4', event: 'page_view', ...fields },
+    ] });
+    assert.ok(s.checks.pii.length > 0);
+    for (const output of [toMarkdown(s), toJsonl(s), JSON.stringify(s.checks.pii)]) {
+      assert.ok(!decodeURIComponent(output).includes('jane@example.com'));
+    }
+  });
+}
+
+t('PII findings collect email and phone kinds sharing dl.query', () => {
+  const s = buildSession({ startedAt: 1, page: 'https://shop.example/', events: [
+    { seq: 1, ts: 1, source: 'network', vendor: 'ga4', event: 'page_view', params: {
+      dl: 'https://shop.example/?' + new URLSearchParams([['jane@example.com', '1'], ['+77012345678', '1']]),
+    } },
+  ] });
+  const hit = s.checks.pii.find((hit) => hit.path === 'dl.query');
+  assert.equal(hit.kind, 'email, phone');
+  assert.equal(hit.count, 2);
+  assert.equal(hit.inUrl, true);
+  assert.ok(toMarkdown(s).includes('`dl.query` - email, phone, 2x, **in a URL**'));
+});
+
+for (const [base, key] of [
+  ['https://www.facebook.com/tr/?id=1234567890123456&ev=PageView', 'dl'],
+  ['https://www.google-analytics.com/g/collect?v=2&tid=G-ABC123&en=page_view', 'page_location'],
+  ['https://www.google-analytics.com/g/collect?v=2&tid=G-ABC123&en=page_view', 'page_referrer'],
+]) {
+  t(`URL-valued ${key} masks query and fragment secrets in both exports`, () => {
+    const location = 'https://shop.example/checkout?token=abc123#access_token=frag999';
+    const [e] = run(base + '&' + new URLSearchParams({ [key]: location }));
+    const s = buildSession({ startedAt: 1, page: 'https://shop.example/', events: [{ ...e, seq: 1, ts: 1, source: 'network' }] });
+    const masked = new URL(s.events[0].params[key]);
+    assert.equal(masked.searchParams.get('token'), '[redacted]');
+    assert.equal(new URLSearchParams(masked.hash.slice(1)).get('access_token'), '[redacted]');
+    for (const output of [toMarkdown(s), toJsonl(s)]) {
+      assert.ok(!output.includes('abc123'));
+      assert.ok(!output.includes('frag999'));
+    }
+  });
+}
+
+t('API-context event paths mask emails and secrets in both exports', () => {
+  const path = '/api/users/jane@example.com/token/abc123';
+  const s = buildSession({ startedAt: 1, page: 'https://shop.example/', events: [
+    { seq: 1, ts: 1, source: 'network', vendor: 'request', event: 'GET ' + path, url: 'https://shop.example' + path, params: {} },
+  ] });
+  assert.equal(s.events[0].event, 'GET ' + new URL(s.events[0].url).pathname);
+  for (const output of [toMarkdown(s), toJsonl(s)]) {
+    assert.ok(!output.includes('jane@example.com'));
+    assert.ok(!output.includes('abc123'));
+  }
+});
 
 t('release versions agree', () => {
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
@@ -526,6 +923,28 @@ t('markdown: complete, self-contained, carries no raw PII', () => {
   assert.ok(!md.includes('client@mail.ru'), 'raw PII must never reach the file');
   assert.ok(md.includes('125000'), 'params are carried in full');
 });
+
+for (const withEvents of [false, true]) {
+  t(`page URLs are masked in Markdown and JSONL (${withEvents ? 'events' : 'header only'})`, () => {
+    const page = 'https://shop.example/checkout?email=jane@example.com#access_token=abc123';
+    const s = buildSession({
+      startedAt: 1, page,
+      events: withEvents ? [
+        { seq: 1, ts: 1, source: 'datalayer', vendor: 'datalayer', event: 'checkout', page, params: { cid: '123.456', page_name: 'checkout' } },
+        { seq: 2, ts: 2, source: 'datalayer', vendor: 'datalayer', event: 'purchase', page: page.replace('/checkout', '/thanks'), params: {} },
+      ] : [],
+    });
+    assert.ok(!decodeURIComponent(s.header.page).includes('jane@example.com'));
+    for (const output of [toMarkdown(s), toJsonl(s)]) {
+      assert.ok(!output.includes('jane@example.com'));
+      assert.ok(!output.includes('abc123'));
+    }
+    if (withEvents) {
+      assert.equal(s.events[0].params.cid, '123.456');
+      assert.equal(s.events[0].params.page_name, 'checkout');
+    }
+  });
+}
 
 t('same-named dataLayer pushes with different payloads are not duplicates', () => {
   // Live capture: six section_view pushes in the same millisecond,
