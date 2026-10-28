@@ -64,6 +64,8 @@ function duplicateSuspects(events) {
   const dupes = [];
   for (const e of events) {
     if (e.vendor === 'request') continue;
+    // Recording chunks carry only the counter id, so every pair would collide.
+    if (e.vendor === 'metrica' && (e.event === 'webvisor' || e.event === 'clickmap')) continue;
     const keys = [
       ['order_id', orderId(e)],
       ['dedup_key', e.params?.[dedupField(e)]],

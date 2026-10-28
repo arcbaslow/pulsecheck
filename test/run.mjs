@@ -147,6 +147,12 @@ t('metrica webvisor chunks are counted, not decoded', () => {
   assert.equal(e.event, 'webvisor');
 });
 
+t('metrica recording chunks are never duplicate suspects', () => {
+  const chunks = [1, 101, 201].map((ts, i) => ({ seq: i + 1, ts, source: 'network', ...run('https://mc.yandex.ru/webvisor/12345678?wv-part=' + i, 'POST', 'blob' + i)[0] }));
+  assert.equal(chunks[0].event, 'webvisor');
+  assert.equal(buildSession({ startedAt: 1, page: '', events: chunks }).checks.dupes.length, 0);
+});
+
 t('amplitude batch = N events, dedup key kept', () => {
   const body = JSON.stringify({
     api_key: 'k1',
@@ -601,6 +607,18 @@ t('analysis identifiers survive redaction', () => {
   assert.deepEqual(event.params, { cid: '1234567890.1234567890', sid: '1754812803', tid: 'G-ABC123', insert_id: 'i1', eid: 'e1', value: 125000, _p: '1234567890' });
   assert.equal(hits.length, 0);
   assert.equal(event.redacted, false);
+});
+
+t('Floodlight semicolon path pairs get key-based redaction in the full export', () => {
+  const url = 'https://12345.fls.doubleclick.net/activityi;src=12345;type=sales;cat=purch;ord=ORD1;qty=1;token=synthetic-secret;u1=user@mail.kz;~oref=https%3A%2F%2Fbank.kz%2F%3Femail%3Dx%40y.kz?';
+  const [e] = run(url);
+  const s = buildSession({ startedAt: 1, page: '', events: [{ ...e, seq: 1, ts: 1, source: 'network' }] });
+  for (const text of [toJsonl(s), toMarkdown(s)]) {
+    for (const leak of ['synthetic-secret', 'user@mail.kz', 'x@y.kz', 'x%40y.kz']) assert.ok(!text.includes(leak), leak + ' survived');
+  }
+  const masked = s.events[0].url;
+  assert.ok(masked.includes('activityi;src=12345;type=sales;cat=purch;ord=ORD1;qty=1;token=%5Bredacted%5D;'), masked);
+  assert.ok(s.checks.pii.some((p) => p.path === 'url.path.1.token' && p.kind === 'secret' && p.inUrl));
 });
 
 t('PII in the URL query is masked and located', () => {

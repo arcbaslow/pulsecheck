@@ -106,7 +106,9 @@ addresses and values under recognised personal-identifier, person-name and
 national-id keys in `params`, including JSON and form-encoded bodies.
 Request URLs, page URLs (including the session header) and absolute HTTP(S)
 URL-valued parameters receive authority, query, path and fragment checks.
-Path segments use the previous segment as their key; this also applies to
+Path segments use the previous segment as their key, and a segment packed
+with `;`-separated `key=value` pairs (Floodlight) is redacted pair by pair
+under its own keys; this also applies to
 paths in `METHOD /path` event names. Every event name receives inline pattern
 detection, but is not treated as a person-name value.
 
