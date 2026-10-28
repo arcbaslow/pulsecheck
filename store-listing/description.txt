@@ -9,7 +9,7 @@ Use it to:
 - see the consent state that applied when a request was sent; and
 - export the evidence as Markdown or JSONL.
 
-Pulsecheck includes parsers for GA4, Meta Pixel, Yandex Metrica, Amplitude and TikTok. Event-shaped first-party collectors are retained through a generic fallback instead of being silently dropped.
+Pulsecheck includes parsers for GA4, Meta Pixel, Yandex Metrica, Amplitude, TikTok, Google Ads conversion and Floodlight. Event-shaped first-party collectors are retained through a generic fallback instead of being silently dropped.
 
 The Markdown export contains session context, vendor inventory, automatic checks and the complete numbered timeline. JSONL contains the same event list as schema v1 for scripts and comparison tools.
 

@@ -78,6 +78,7 @@
   #count { color: var(--muted); }
   #chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 6px 10px 0; }
   .chip {
+    font: inherit; background: transparent;
     border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px;
     cursor: pointer; color: var(--muted); font-size: 12px;
   }
@@ -90,11 +91,12 @@
     gap: 10px; align-items: baseline;
     padding: 4px 10px; border-bottom: 1px solid var(--line); cursor: pointer;
   }
-  .row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .row:focus-visible, .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
   .row:nth-child(even) { background: var(--row); }
   .t { color: var(--muted); font-family: ui-monospace, "Cascadia Mono", Menlo, monospace; font-size: 12px; }
   .v { color: var(--accent); }
-  .v[data-vendor="unparsed"], .v[data-vendor="generic"] { color: var(--warn); }
+  .v[data-vendor="unparsed"] { color: var(--warn); }
+  .v[data-vendor="generic"] { color: var(--fg); }
   .v[data-vendor="request"] { color: var(--muted); }
   .e { font-weight: 600; }
   .p { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -106,24 +108,29 @@
     white-space: pre-wrap; word-break: break-word;
   }
   #empty { color: var(--muted); padding: 24px 10px; max-width: 60ch; }
+  #empty p { margin: 0 0 10px; }
+  #empty p:first-child { color: var(--fg); }
 </style>
 </head>
 <body>
   <div id="bar">
-    <button id="rec" class="on" title="Pause capture"><span class="dot"></span><span id="recLabel">Recording</span></button>
-    <button id="clear">Clear</button>
+    <button id="rec" class="on" title="Pause recording"><span class="dot"></span><span id="recLabel">Recording</span></button>
+    <button id="clear" title="Clear the session; vendor filters are kept">Clear</button>
     <button id="all" class="toggle" aria-pressed="false" title="Record method, host, path, status and MIME type for non-static site requests. Bodies and query strings are excluded.">API context</button>
-    <input id="notes" placeholder="Scenario: what you are walking through">
-    <input id="filter" placeholder="Filter">
+    <input id="notes" aria-label="Scenario" placeholder="Scenario, e.g. checkout with a promo code">
+    <input id="filter" aria-label="Filter events" placeholder="Filter: event, vendor, URL, parameters">
     <span class="spacer"></span>
     <span id="count">0 events</span>
-    <button id="copy">Copy .md</button>
-    <button id="md" class="primary">Save .md</button>
-    <button id="jsonl">.jsonl</button>
+    <button id="copy" title="Whole session; the filter is not applied">Copy .md</button>
+    <button id="md" class="primary" title="Whole session; the filter is not applied">Save .md</button>
+    <button id="jsonl" title="Whole session; the filter is not applied">Save .jsonl</button>
   </div>
-  <div id="chips"></div>
+  <div id="chips" role="group" aria-label="Vendors"></div>
   <div id="err"></div>
-  <div id="list"><div id="empty">Walk through your scenario on the page and events appear here. Capture starts when the panel opens; dataLayer pushes from before that are recovered from a snapshot. The session stays in memory and nothing is sent off-device.</div></div>
+  <div id="list"><div id="empty">
+    <p>Walk through the flow on the page; events appear here. Reload the page to capture its startup requests: network capture starts when this panel opens, earlier dataLayer entries are recovered from a snapshot.</p>
+    <p>Save before closing DevTools. The session stays in memory and nothing is sent off-device.</p>
+  </div></div>
   <script type="module" src="panel.js"></script>
 </body>
 </html>

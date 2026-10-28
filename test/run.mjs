@@ -18,6 +18,76 @@ const run = (url, method = 'GET', body = '') => parse(toRequest({ url, method, b
 
 console.log('parsers');
 
+t('ga4 Measurement Protocol JSON expands events and never exports api_secret', () => {
+  const events = run('https://www.google-analytics.com/mp/collect?measurement_id=G-X&api_secret=S3CR3T', 'POST', JSON.stringify({
+    client_id: '123.456', user_id: 'person', timestamp_micros: '1754812800000000', consent: { ad_user_data: 'DENIED' },
+    events: [{ name: 'purchase', params: { value: 10, items: [{ item_id: 'A' }] } }, { name: 'page_view', params: { page_title: 'Home' } }],
+  }));
+  assert.deepEqual(events.map((e) => [e.vendor, e.event, e.params.tid]), [['ga4', 'purchase', 'G-X'], ['ga4', 'page_view', 'G-X']]);
+  assert.deepEqual(events[0].params.items, [{ item_id: 'A' }]);
+  assert.equal(events[1].params.page_title, 'Home');
+  assert.equal(events[0].params.client_id, '123.456');
+  assert.equal(events[0].params.timestamp_micros, '1754812800000000');
+  assert.deepEqual(events[0].params.consent, { ad_user_data: 'DENIED' });
+  assert.ok(!('api_secret' in events[0].params));
+  const session = buildSession({ startedAt: 1, page: 'https://example.kz/', events: events.map((e, i) => ({ ...e, ts: 1, seq: i + 1, source: 'network' })) });
+  for (const output of [toJsonl(session), toMarkdown(session)]) assert.ok(!output.includes('S3CR3T'));
+});
+
+t('ga4 debug Measurement Protocol JSON supports app ids and missing names', () => {
+  const [e] = run('https://www.google-analytics.com/debug/mp/collect?firebase_app_id=app-X', 'POST', JSON.stringify({ app_instance_id: 'app-1', events: [{ params: { value: 1 } }] }));
+  assert.equal(e.vendor, 'ga4');
+  assert.equal(e.event, '(no event name)');
+  assert.equal(e.params.debug_mode, true);
+  assert.equal(e.params.tid, 'app-X');
+  assert.equal(e.params.app_instance_id, 'app-1');
+});
+
+for (const [host, path, event, query] of [
+  ['googleads.g.doubleclick.net', 'viewthroughconversion', 'viewthroughconversion', 'label=DEMO&value=1&currency_code=KZT&gcs=G111'],
+  ['www.googleadservices.com', 'conversion', 'conversion', 'label=X&oid=A1'],
+  ['www.google.com', '1p-conversion', '1p_conversion', 'label=X'],
+  ['www.google.kz', '1p-conversion', '1p_conversion', 'label=X'],
+]) {
+  t(`gads ${host}/${path} (synthetic)`, () => {
+    const [e] = run(`https://${host}/pagead/${path}/123456789/?${query}`);
+    assert.equal(e.vendor, 'gads');
+    assert.equal(e.event, event);
+    assert.deepEqual(e.params, { ...Object.fromEntries(new URLSearchParams(query)), id: '123456789' });
+  });
+}
+
+t('floodlight activityi decodes sales params and query overrides path', () => {
+  const url = 'https://12345.fls.doubleclick.net/activityi;src=12345;type=sales;cat=purch;ord=ORD1;qty=2;cost=250000;u1=credit;gcs=G101?';
+  const [e] = run(url);
+  assert.equal(e.vendor, 'floodlight');
+  assert.equal(e.event, 'sales/purch');
+  assert.equal(e.params.src, '12345');
+  assert.equal(e.params.ord, 'ORD1');
+  assert.equal(e.params.qty, '2');
+  assert.equal(e.params.gcs, 'G101');
+  assert.equal(run(url + 'u1=home%20loan')[0].params.u1, 'home loan');
+  const s = buildSession({ startedAt: 1, page: '', events: [{ ...e, seq: 1, ts: 1 }] });
+  assert.deepEqual(s.checks.vendors[0].ids, ['12345']);
+});
+
+t('floodlight ddm activity decodes counter params', () => {
+  const [e] = run('https://ad.doubleclick.net/ddm/activity/src=12345;type=count;cat=view;ord=8367491827?');
+  assert.equal(e.vendor, 'floodlight');
+  assert.equal(e.event, 'count/view');
+  assert.equal(e.params.src, '12345');
+  assert.equal(e.params.ord, '8367491827');
+});
+
+t('floodlight on td.doubleclick.net under /td/fls/rul/ (synthetic, host unverified)', () => {
+  const [e] = run('https://td.doubleclick.net/td/fls/rul/activityi;fledge=1;src=12345;type=sales;cat=purch;ord=ORD1;qty=1;cost=100?');
+  assert.equal(e.vendor, 'floodlight');
+  assert.equal(e.event, 'sales/purch');
+  assert.equal(e.params.src, '12345');
+  assert.equal(e.params.fledge, '1');
+  assert.equal(run('https://googleads.g.doubleclick.net/pagead/viewthroughconversion/1/?label=x')[0].vendor, 'gads');
+});
+
 t('ga4 GET single hit', () => {
   const [e] = run('https://www.google-analytics.com/g/collect?v=2&tid=G-ABC123&cid=1234567890.1234567890&en=page_view&ep.page_type=home&epn.value=10');
   assert.equal(e.vendor, 'ga4');
@@ -196,6 +266,32 @@ t('the first-party user_id in that payload is redacted', () => {
   assert.ok(!event.params.user_id.includes('0000-0000'));
 });
 
+t('amplitude host boundary rejects lookalike hosts without a body signature', () => {
+  assert.equal(run('https://amplitude.com.evil.kz/2/httpapi', 'POST', '{}').length, 0);
+  for (const host of ['api2.amplitude.com', 'api.eu.amplitude.com', 'api.lab.amplitude.com']) {
+    assert.equal(run(`https://${host}/2/httpapi`, 'POST', '{"events":[{"event_type":"open"}]}')[0].vendor, 'amplitude');
+  }
+});
+
+for (const [path, event] of [['webvisor', 'webvisor'], ['clmap', 'clickmap']]) {
+  t(`metrica /${path}/ counts recordings without decoding bodies`, () => {
+    const [e] = run(`https://mc.yandex.ru/${path}/12345?extra=ignored`, 'POST', 'not a decoded body');
+    assert.equal(e.vendor, 'metrica');
+    assert.equal(e.event, event);
+    assert.deepEqual(e.params, { counter: '12345' });
+    assert.ok(!('raw' in e));
+  });
+}
+
+t('empty specific extraction retains an unparsed record with a clipped raw body', () => {
+  const body = JSON.stringify({ events: [], padding: 'x'.repeat(5000) });
+  const [e] = run('https://www.google-analytics.com/mp/collect', 'POST', body);
+  assert.equal(e.vendor, 'unparsed');
+  assert.equal(e.event, '(ga4 matched, nothing decoded)');
+  assert.equal(e.raw, body.slice(0, 4096));
+  assert.equal(e.raw.length, 4096);
+});
+
 console.log('dataLayer');
 
 t('object push', () => {
@@ -300,6 +396,7 @@ t('snapshots pushes that happened before injection', () => {
   const items = drain(ctx);
   assert.deepEqual(items.map((i) => i.msg.event), ['gtm.js', 'form_start']);
   assert.equal(items[0].page, 'https://example.kz/');
+  assert.ok(items.every((i) => i.historical === true));
 });
 
 t('captures pushes after injection, and the page still gets them', () => {
@@ -312,7 +409,34 @@ t('captures pushes after injection, and the page still gets them', () => {
   assert.equal(items.length, 1);
   assert.equal(items[0].msg.event, 'purchase');
   assert.ok(items[0].ts > 0);
+  assert.ok(!('historical' in items[0]));
 });
+
+t('tap reports dropped pushes once per drain when its 5000-item buffer fills', () => {
+  const ctx = page({ dataLayer: [] });
+  for (let i = 0; i < 5001; i++) ctx.dataLayer.push({ event: 'test', i });
+  const batch = ctx.__pulsecheck.drain();
+  assert.equal(batch.items.length, 5000);
+  assert.equal(batch.dropped, 1);
+  assert.equal(ctx.__pulsecheck.drain().dropped, 0);
+  assert.equal(ctx.dataLayer.length, 5001);
+});
+
+for (const [kind, payload] of [
+  ['keys', Object.fromEntries(Array.from({ length: 300 }, (_, i) => ['key' + i, i]))],
+  ['items', { list: Array.from({ length: 300 }, (_, i) => i) }],
+  ['depth', { a: { b: { c: { d: { e: { f: { g: { h: 1 } } } } } } } }],
+]) {
+  t(`tap flags clipping of ${kind} and resets the flag per record`, () => {
+    const ctx = page({ dataLayer: [] });
+    ctx.dataLayer.push(payload, { event: 'small' });
+    const items = drain(ctx);
+    assert.equal(items[0].truncated, true);
+    assert.ok(!('truncated' in items[1]));
+    if (kind === 'keys') assert.equal(Object.keys(items[0].msg).length, 200);
+    if (kind === 'items') assert.equal(items[0].msg.list.length, 200);
+  });
+}
 
 t('the tap is invisible to page code', () => {
   const ctx = page({ dataLayer: [{ event: 'a' }] });
@@ -371,6 +495,79 @@ t('unserialisable payloads never throw', () => {
 });
 
 console.log('redaction');
+
+t('nested URL two levels deep masks its phone', () => {
+  const page_location = 'https://a.kz/?next=https%3A%2F%2Fb.kz%2F%3Fback%3Dhttps%253A%252F%252Fc.kz%252F%253Fphone%253D%252B77011234567';
+  const { event, hits } = redactEvent({ params: { page_location } });
+  let decoded = event.params.page_location;
+  for (let i = 0; i < 3; i++) decoded = decodeURIComponent(decoded);
+  assert.ok(!decoded.includes('77011234567'));
+  assert.ok(hits.some((h) => (h.kind === 'phone' || h.kind === 'identifier') && h.inUrl));
+});
+
+t('encoded URL userinfo is removed structurally and flagged', () => {
+  const { event, hits } = redactEvent({ params: { page_location: 'https://user%40mail.com:pw@host.kz/' } });
+  const url = new URL(event.params.page_location);
+  assert.equal(url.username, '');
+  assert.equal(url.password, '');
+  assert.ok(hits.some((h) => h.path.endsWith('.authority') && h.inUrl));
+});
+
+t('relative URL values mask email', () => {
+  const { event, hits } = redactEvent({ params: { page_location: '/checkout?email=a@b.kz' } });
+  assert.ok(!decodeURIComponent(event.params.page_location).includes('a@b.kz'));
+  assert.ok(hits.some((h) => h.kind === 'email' || h.kind === 'identifier'));
+});
+
+t('nested URL structural decoding stops after three levels', () => {
+  for (const levels of [3, 4]) {
+    let dl = 'https://last.kz/?token=depth-marker';
+    for (let i = 1; i < levels; i++) dl = 'https://outer.kz/?next=' + encodeURIComponent(dl);
+    const { event, hits } = redactEvent({ params: { dl } });
+    if (levels === 3) {
+      assert.ok(!event.params.dl.includes('depth-marker'));
+      assert.ok(hits.some((h) => h.kind === 'secret'));
+    } else {
+      assert.equal(event.params.dl, dl);
+      assert.equal(hits.length, 0);
+    }
+  }
+});
+
+t('keep-listed strings mask emails and plus phones while retaining numeric audit identifiers', () => {
+  const params = { event_id: 'user@mail.com', eid: 'order +77011234567', cid: '1234567890.1234567890', value: '77011234567', sid: '1754812800', _p: '77011234567' };
+  const { event, hits } = redactEvent({ params });
+  assert.ok(!event.params.event_id.includes('user@mail.com'));
+  assert.ok(!event.params.eid.includes('77011234567'));
+  assert.ok(hits.some((h) => h.path === 'event_id' && h.kind === 'email'));
+  assert.ok(hits.some((h) => h.path === 'eid' && h.kind === 'phone'));
+  for (const key of ['cid', 'value', 'sid', '_p']) assert.equal(event.params[key], params[key]);
+  const url = 'https://a.kz/?' + new URLSearchParams(Object.fromEntries(['cid', 'value', 'sid', '_p'].map((k) => [k, params[k]])));
+  assert.equal(redactEvent({ url }).event.url, url);
+  const nested = 'https://a.kz/?next=' + encodeURIComponent('https://b.kz/?value=77011234567&cid=77011234567.1712345678&phone=%2B77011234567');
+  const { event: n, hits: nh } = redactEvent({ url: nested });
+  assert.ok(n.url.includes(encodeURIComponent('value=77011234567&cid=77011234567.1712345678')), 'keep-listed keys apply one URL level down');
+  assert.ok(!n.url.includes('77011234567%26phone') && !n.url.includes('2B77011234567'), 'the nested phone param is still masked');
+  assert.deepEqual(nh.map((h) => h.path), ['url.next.phone']);
+});
+
+t('consent stamps are redacted when redactEvent is called directly', () => {
+  const { event, hits } = redactEvent({ consent: { email: 'user@mail.com' } });
+  assert.ok(!JSON.stringify(event).includes('user@mail.com'));
+  assert.ok(hits.some((h) => h.path === 'consent.email'));
+});
+
+t('consent replay only stamps valid Consent Mode keys and keeps extra fields in redacted command params', () => {
+  const params = { ad_storage: 'denied', analytics_storage: 'invalid', ad_user_data: 'granted', ad_personalization: 'denied', functionality_storage: 'granted', personalization_storage: 'denied', security_storage: 'granted', wait_for_update: 500, region: ['KZ'], email: 'user@mail.com', arbitrary: 'state' };
+  const s = buildSession({ startedAt: 1, page: '', events: [
+    { seq: 1, ts: 1, source: 'consent', vendor: 'consent', event: 'consent_update', params },
+    { seq: 2, ts: 2, source: 'network', vendor: 'ga4', event: 'page_view', params: {} },
+  ] });
+  const { analytics_storage, email, arbitrary, ...expected } = params;
+  assert.deepEqual(s.events[1].consent, expected);
+  assert.equal(s.events[0].params.arbitrary, 'state');
+  for (const output of [toJsonl(s), toMarkdown(s)]) assert.ok(!output.includes(email));
+});
 
 t('email in params is masked and flagged', () => {
   const { event, hits } = redactEvent({ params: { user_email_field: 'alice@example.com' } });
@@ -520,11 +717,11 @@ for (const [query, key, values] of [
 }
 
 for (const [authority, kind] of [
-  ['jane@example.com', 'name'], ['jane@example.com:8443', 'name'],
-  ['admin@shop.example', 'name'], ['user:synthetic-secret@shop.example', 'name'],
+  ['jane@example.com', 'secret'], ['jane@example.com:8443', 'secret'],
+  ['admin@shop.example', 'secret'], ['user:synthetic-secret@shop.example', 'secret'],
   ['8701-234-56-78', 'phone'],
 ]) {
-  t(`URL authority patterns are masked in parameters, JSON and nested queries: ${authority}`, () => {
+  t(`URL authorities clear userinfo or mask phone hosts in parameters, JSON and nested queries: ${authority}`, () => {
     const location = `https://${authority}/profile`;
     const { event, hits } = redactEvent({
       params: { page_location: location, body: JSON.stringify({ location }) },
@@ -536,7 +733,8 @@ for (const [authority, kind] of [
       assert.ok(!masked.includes(authority));
       assert.equal(new URL(masked).pathname, '/profile');
       assert.equal(new URL(masked).host, kind === 'phone' ? 'redacted.invalid' : new URL(location).host);
-      if (new URL(location).password) assert.equal(decodeURIComponent(new URL(masked).password), '[redacted]');
+      assert.equal(new URL(masked).username, '');
+      assert.equal(new URL(masked).password, '');
     }
     assert.equal(event.redacted, true);
     assert.equal(hits.filter((hit) => hit.kind === kind).length, 4);
@@ -865,12 +1063,13 @@ t('jsonl: header first, every line parses, seq gap-free', () => {
   assert.ok(lines.slice(1).every((l) => l.type === 'event'));
 });
 
-t('checks: duplicate suspects, consent violation, PII', () => {
+t('checks: payload duplicate suspects, ungated consent observation, PII', () => {
   const s = fixtureSession();
   assert.equal(s.checks.dupes.length, 1, 'two identical ga4 purchases 500ms apart');
-  assert.equal(s.checks.violations.length, 1, 'meta fired while ad_storage=denied');
-  assert.equal(s.checks.violations[0].e.vendor, 'meta');
-  assert.equal(s.checks.violations[0].key, 'ad_storage');
+  assert.equal(s.checks.consent.length, 1, 'meta fired while ad_storage=denied');
+  assert.equal(s.checks.consent[0].vendor, 'meta');
+  assert.equal(s.checks.consent[0].kind, 'ungated');
+  assert.equal(s.checks.consent[0].key, 'ad_storage');
   assert.equal(s.checks.pii.length, 1);
   assert.equal(s.checks.vendors.find((v) => v.vendor === 'ga4').count, 2);
 });
@@ -884,9 +1083,30 @@ t('the ads sync ping is checked against ad_storage, not analytics_storage', () =
       { seq: 2, ts: t0 + 500, source: 'network', vendor: 'ga4', event: '(google_ads_sync)', params: { tid: 'G-A' }, page: 'https://x.kz/' },
     ],
   });
-  assert.equal(s.checks.violations.length, 1);
-  assert.equal(s.checks.violations[0].key, 'ad_storage');
+  assert.equal(s.checks.consent.length, 1);
+  assert.equal(s.checks.consent[0].key, 'ad_storage');
 });
+
+for (const [vendor, gcs, kind] of [
+  ['metrica', undefined, undefined], ['amplitude', undefined, undefined],
+  ['ga4', 'G100', 'cookieless'], ['ga4', 'G111', 'mismatch'], ['ga4', undefined, 'unsigned'],
+  ['ga4', 'G101', 'mismatch'], ['ga4', 'G110', 'cookieless'], ['ga4', 'G1xx', 'unsigned'],
+  ['gads', 'G101', 'cookieless'], ['gads', 'G110', 'mismatch'],
+  ['floodlight', 'G100', 'cookieless'], ['floodlight', 'G111', 'mismatch'],
+  ['meta', undefined, 'ungated'], ['tiktok', undefined, 'ungated'],
+]) {
+  t(`consent observations: ${vendor} ${gcs || 'no gcs'} is ${kind || 'outside Consent Mode'}`, () => {
+    const s = buildSession({ startedAt: 1, page: '', events: [
+      { seq: 1, ts: 1, source: 'consent', vendor: 'consent', event: 'consent_default', params: { ad_storage: 'denied', analytics_storage: 'denied' } },
+      { seq: 2, ts: 2, source: 'network', vendor, event: 'test', params: gcs ? { gcs } : {} },
+    ] });
+    assert.equal(s.checks.consent.length, kind ? 1 : 0);
+    if (kind) {
+      assert.deepEqual(s.checks.consent[0], { seq: 2, vendor, event: 'test', key: vendor === 'ga4' ? 'analytics_storage' : 'ad_storage', kind, gcs });
+      assert.ok(toMarkdown(s).includes('Consent observations'));
+    }
+  });
+}
 
 t('timeline is ordered by send time and renumbered, consent replayed over it', () => {
   // dataLayer arrives in 500ms drain batches, so capture order lies. Here the
@@ -901,7 +1121,7 @@ t('timeline is ordered by send time and renumbered, consent replayed over it', (
   assert.deepEqual(s.events.map((e) => e.event), ['consent_default', 'Lead'], 'sorted by ts');
   assert.deepEqual(s.events.map((e) => e.seq), [1, 2], 'renumbered gap-free in that order');
   assert.equal(s.events[1].consent.ad_storage, 'denied', 'the earlier consent applies');
-  assert.equal(s.checks.violations.length, 1, 'caught only because the order was fixed first');
+  assert.equal(s.checks.consent.length, 1, 'caught only because the order was fixed first');
 });
 
 t('hits to different streams are not duplicates of each other', () => {
@@ -922,6 +1142,14 @@ t('markdown: complete, self-contained, carries no raw PII', () => {
   assert.ok(md.includes('https://example.kz/thanks'), 'page changes appear in the timeline');
   assert.ok(!md.includes('client@mail.ru'), 'raw PII must never reach the file');
   assert.ok(md.includes('125000'), 'params are carried in full');
+  const sections = ['## Automatic checks', '## Inventory', '## Top events', '## Redaction', '## Timeline'];
+  const positions = sections.map((section) => md.indexOf(section));
+  assert.ok(positions.every((pos, i) => pos >= 0 && (!i || pos > positions[i - 1])));
+  assert.ok(md.startsWith('# Pulsecheck - tracking session\n'));
+  const notice = 'Detection is incomplete; review before sharing. Scenario notes and the user-agent string are not redacted.';
+  assert.ok(md.indexOf(notice) < positions[0]);
+  assert.ok(md.includes('"API context" toggle was off'));
+  assert.ok(md.includes('Save .jsonl in the panel for the machine-readable version of the same session (schema v1, docs/dump-format.md).'));
 });
 
 for (const withEvents of [false, true]) {
@@ -966,6 +1194,52 @@ t('a genuinely doubled push is still caught', () => {
   assert.equal(s.checks.dupes.length, 1, 'identical payload 30ms apart');
 });
 
+for (const [name, vendor, event, a, b, gap, kind] of [
+  ['different select_item items', 'ga4', 'select_item', { tid: 'G-X', items: [{ item_id: 'A' }] }, { tid: 'G-X', items: [{ item_id: 'B' }] }, 100, undefined],
+  ['same order after 5s', 'ga4', 'purchase', { tid: 'G-X', transaction_id: 'ORD1' }, { tid: 'G-X', transaction_id: 'ORD1' }, 5000, 'order_id'],
+  ['different orders with equal totals', 'ga4', 'purchase', { tid: 'G-X', transaction_id: 'ORD1', value: 10 }, { tid: 'G-X', transaction_id: 'ORD2', value: 10 }, 100, undefined],
+  ['page_view ignores _p and _s', 'ga4', 'page_view', { tid: 'G-X', _p: '1', _s: '1' }, { tid: 'G-X', _p: '2', _s: '2' }, 300, 'payload'],
+  ['browser Meta eid repeats', 'meta', 'Purchase', { id: '123', eid: 'evt-1', value: 10 }, { id: '123', eid: 'evt-1', value: 20 }, 5000, 'dedup_key'],
+  ['Amplitude insert_id repeats', 'amplitude', 'test', { insert_id: 'one' }, { insert_id: 'one', value: 2 }, 5000, 'dedup_key'],
+  ['TikTok event_id repeats', 'tiktok', 'test', { event_id: 'one' }, { event_id: 'one', value: 2 }, 5000, 'dedup_key'],
+  ['Ads oid repeats', 'gads', 'conversion', { id: '123', oid: 'ORD1' }, { id: '123', oid: 'ORD1' }, 5000, 'order_id'],
+  ['Ads oid repeats within one conversion label', 'gads', 'conversion', { id: '123', oid: 'ORD1', label: 'A' }, { id: '123', oid: 'ORD1', label: 'A' }, 5000, 'order_id'],
+  ['Ads oid across two conversion labels is two actions', 'gads', 'conversion', { id: '123', oid: 'ORD1', label: 'A' }, { id: '123', oid: 'ORD1', label: 'B' }, 5000, undefined],
+  ['dataLayer transaction_id repeats', 'datalayer', 'purchase', { transaction_id: 'ORD1' }, { transaction_id: 'ORD1' }, 5000, 'order_id'],
+  ['Floodlight sales ord repeats', 'floodlight', 'sales/purch', { src: '123', ord: 'ORD1', qty: '1' }, { src: '123', ord: 'ORD1', qty: '2' }, 5000, 'order_id'],
+  ['Floodlight counter ord is volatile', 'floodlight', 'count/view', { src: '123', ord: '1' }, { src: '123', ord: '2' }, 100, 'payload'],
+  ['stable key order', 'ga4', 'test', { tid: 'G-X', nested: { a: 1, b: 2 } }, { nested: { b: 2, a: 1 }, tid: 'G-X' }, 100, 'payload'],
+  ['payload outside 2s', 'ga4', 'page_view', { tid: 'G-X' }, { tid: 'G-X' }, 2001, undefined],
+  ['redacted payload collision', 'ga4', 'test', { email: 'alice@example.com' }, { email: 'anna@example.com' }, 100, undefined],
+  ['different Floodlight advertisers', 'floodlight', 'count/view', { src: '123' }, { src: '456' }, 100, undefined],
+]) {
+  t(`duplicates: ${name}`, () => {
+    const events = [a, b].map((params, i) => ({ seq: i + 1, ts: 1 + i * gap, source: 'network', vendor, event, params }));
+    const s = buildSession({ startedAt: 1, page: '', events });
+    assert.equal(s.checks.dupes.length, kind ? 1 : 0);
+    if (kind) {
+      assert.equal(s.checks.dupes[0].kind, kind);
+      assert.deepEqual([s.checks.dupes[0].a, s.checks.dupes[0].b], [1, 2]);
+      assert.equal(s.checks.dupes[0].gap, gap);
+      assert.ok(toMarkdown(s).includes(kind === 'order_id' ? 'order id ORD1 repeated' : kind === 'dedup_key' ? 'dedup key' : 'same payload'));
+    }
+  });
+}
+
+t('duplicates: one Meta eid on two different events is not a doubled event', () => {
+  const events = [['ViewContent', 1], ['AddToCart', 5001]].map(([event, ts], i) => ({ seq: i + 1, ts, source: 'network', vendor: 'meta', event, params: { id: '123', eid: 'evt-1' } }));
+  assert.equal(buildSession({ startedAt: 1, page: '', events }).checks.dupes.length, 0);
+  const amp = [['open', 1], ['purchase', 5001]].map(([event, ts], i) => ({ seq: i + 1, ts, source: 'network', vendor: 'amplitude', event, params: { api_key: 'k', insert_id: 'one' } }));
+  assert.equal(buildSession({ startedAt: 1, page: '', events: amp }).checks.dupes[0]?.kind, 'dedup_key', 'Amplitude drops the second event on a reused insert_id whatever its type');
+});
+
+t('duplicate keys never expose original PII in Markdown', () => {
+  const events = [1, 2].map((seq) => ({ seq, ts: seq, vendor: 'meta', event: 'Purchase', params: { eid: 'event', email: 'alice@example.com' } }));
+  const s = buildSession({ startedAt: 1, page: '', events });
+  assert.equal(s.checks.dupes.length, 1);
+  assert.ok(!toMarkdown(s).includes('alice@example.com'));
+});
+
 t('context traffic does not take over the Top events table', () => {
   const t0 = 1754812800000;
   const noise = (seq) => ({ seq, ts: t0 + seq * 10, source: 'network', vendor: 'request', event: 'POST /youtubei/v1/log_event', params: { host: 'www.youtube.com' }, page: 'https://x.kz/' });
@@ -1004,10 +1278,35 @@ t('the dump records whether request capture was on', () => {
   assert.ok(toMarkdown(on).includes('| Site requests (non-tracking) | recorded |'));
 });
 
+t('export records tap losses, clipping and historical consent without disturbing sequence order', () => {
+  const s = buildSession({ startedAt: 1000, page: 'https://x.kz/', capture: { dropped: 7 }, events: [
+    { seq: 1, ts: 1200, source: 'network', vendor: 'ga4', event: 'page_view', params: { gcs: 'G100' }, historical: false, truncated: false },
+    { seq: 2, ts: 1000, source: 'consent', vendor: 'consent', event: 'consent_default', params: { analytics_storage: 'denied' }, historical: true, truncated: true },
+  ] });
+  assert.deepEqual(s.header.capture, { allRequests: false, dropped: 7, truncated: 1 });
+  assert.deepEqual(s.events.map((e) => e.seq), [1, 2]);
+  assert.equal(s.checks.consent[0].kind, 'cookieless');
+  const lines = toJsonl(s).trim().split('\n').map(JSON.parse);
+  assert.equal(lines[1].historical, true);
+  assert.equal(lines[1].truncated, true);
+  assert.ok(!('historical' in lines[2]));
+  assert.ok(!('truncated' in lines[2]));
+  const md = toMarkdown(s);
+  assert.ok(md.includes('`before` **1**'));
+  assert.ok(md.includes('`+0.2s` **2**'));
+  assert.ok(md.includes('| dataLayer pushes dropped (tap buffer full) | 7 |'));
+  assert.ok(md.includes('| Events with clipped payloads (200 keys / depth 6) | 1 |'));
+  assert.ok(md.includes('| Pre-recording dataLayer entries | 1 (snapshot at panel open; their time is the snapshot time) |'));
+});
+
 t('empty session still exports', () => {
   const s = buildSession({ startedAt: 1754812800000, page: 'https://example.kz/', events: [] });
   assert.ok(toMarkdown(s).includes('Nothing captured'));
   assert.equal(toJsonl(s).trim().split('\n').length, 1);
+  assert.deepEqual(s.header.capture, { allRequests: false, dropped: 0, truncated: 0 });
+  assert.ok(toMarkdown(s).includes('| dataLayer pushes dropped (tap buffer full) | 0 |'));
+  assert.ok(toMarkdown(s).includes('| Events with clipped payloads (200 keys / depth 6) | 0 |'));
+  assert.ok(!toMarkdown(s).includes('Pre-recording dataLayer entries'));
 });
 
 console.log(failed ? `\n${failed} failed` : '\nall passed');

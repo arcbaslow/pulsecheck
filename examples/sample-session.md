@@ -1,4 +1,4 @@
-# Pulsecheck - session dump
+# Pulsecheck - tracking session
 
 | Field | Value |
 |---|---|
@@ -7,11 +7,23 @@
 | Started | 2026-09-04T10:00:00.000Z |
 | Duration | 15s |
 | Events | 10 |
-| Site requests (non-tracking) | NOT recorded - the "All requests" toggle was off |
+| dataLayer pushes dropped (tap buffer full) | 0 |
+| Events with clipped payloads (200 keys / depth 6) | 0 |
+| Pre-recording dataLayer entries | 2 (snapshot at panel open; their time is the snapshot time) |
+| Site requests (non-tracking) | NOT recorded - the "API context" toggle was off |
 | User agent | Chrome |
 | Dump schema | v1 (Pulsecheck 0.1.1) |
 
-Pattern-based redaction masks detected emails, phones and IP addresses, plus values under recognised personal-identifier, person-name and secret keys in parameters, bodies, request URLs, page URLs and URL-valued parameters (including paths and fragments). IP detection applies to whole trimmed addresses or values under IP-like keys, excluding uafvl, uapv and keys containing version. Every event name undergoes inline pattern detection; paths in METHOD /path names use the same segment rules as URL paths. Client ids and other audit identifiers are kept by design. Event names and page_name are not treated as person-name keys. Detection is incomplete; review before sharing. Scenario notes and the user-agent string are not redacted. Every number below is derivable from the timeline at the end of the document.
+Detection is incomplete; review before sharing. Scenario notes and the user-agent string are not redacted.
+
+## Automatic checks
+
+- Duplicate suspects: **1**
+  - `["ga4","G-DEMO123","purchase","A-1042"]` - seq 9 and 10, 100ms apart (order id A-1042 repeated)
+- Consent observations (sent while the Google Consent Mode storage they answer to was denied): **1**
+  - seq 6: meta `InitiateCheckout`, ad_storage=denied: not gated by Consent Mode
+- Sensitive fields (masked): **0**
+- Not recognised by any parser: **0**, caught by the generic parser: **0**
 
 ## Inventory
 
@@ -36,32 +48,27 @@ Pattern-based redaction masks detected emails, phones and IP addresses, plus val
 | consent · consent_update | 1 |
 | datalayer · purchase | 1 |
 
-## Automatic checks
+## Redaction
 
-- Duplicate suspects (same vendor+event+value within 2s): **1**
-  - `ga4|purchase|G-DEMO123|129|USD` - seq 9 and 10, 90ms apart
-- Events sent while the relevant storage was denied: **1**
-  - seq 6: meta `InitiateCheckout` with `ad_storage=denied`
-- Sensitive fields (masked): **0**
-- Not recognised by any parser: **0**, caught by the generic parser: **0**
+Pattern-based redaction masks detected emails, phones and IP addresses, plus values under recognised personal-identifier, person-name and secret keys in parameters, bodies, request URLs, page URLs and URL-valued parameters (including paths and fragments). IP detection applies to whole trimmed addresses or values under IP-like keys, excluding uafvl, uapv and keys containing version. Every event name undergoes inline pattern detection; paths in METHOD /path names use the same segment rules as URL paths. Client ids and other audit identifiers are kept by design. Event names and page_name are not treated as person-name keys. Detection is incomplete; review before sharing. Scenario notes and the user-agent string are not redacted. Every number in this file is derivable from the timeline at the end of the document.
 
 ## Timeline
 
 ### https://shop.example/checkout
 
-- `+0.0s` **1** · consent · `consent_default` `{"analytics_storage":"granted","ad_storage":"denied"}`
-- `+0.1s` **2** · datalayer · `gtm.js` `{"gtm.start":1788516000000}`
-- `+0.9s` **3** · network/collect.shop.example · **ga4** · `page_view` `{"tid":"G-DEMO123","page_title":"Checkout"}`
+- `before` **1** · consent · `consent_default` `{"analytics_storage":"granted","ad_storage":"denied","wait_for_update":500}`
+- `before` **2** · datalayer · `gtm.js` `{"gtm.start":1788516000000}`
+- `+0.9s` **3** · network/collect.shop.example · **ga4** · `page_view` `{"tid":"G-DEMO123","gcs":"G101","page_title":"Checkout"}`
 - `+8.2s` **4** · datalayer · `begin_checkout` `{"currency":"USD","value":129}`
-- `+8.4s` **5** · network/collect.shop.example · **ga4** · `begin_checkout` `{"tid":"G-DEMO123","currency":"USD","value":129}`
+- `+8.4s` **5** · network/collect.shop.example · **ga4** · `begin_checkout` `{"tid":"G-DEMO123","gcs":"G101","currency":"USD","value":129}`
 - `+8.5s` **6** · network/www.facebook.com · **meta** · `InitiateCheckout` `{"id":"1234567890123456","currency":"USD","value":129,"eid":"evt-42"}`
 - `+10.1s` **7** · consent · `consent_update` `{"ad_storage":"granted"}`
 
 ### https://shop.example/confirmation
 
 - `+14.3s` **8** · datalayer · `purchase` `{"transaction_id":"A-1042","currency":"USD","value":129}`
-- `+14.4s` **9** · network/collect.shop.example · **ga4** · `purchase` `{"tid":"G-DEMO123","transaction_id":"A-1042","currency":"USD","value":129}`
-- `+14.5s` **10** · network/collect.shop.example · **ga4** · `purchase` `{"tid":"G-DEMO123","transaction_id":"A-1042","currency":"USD","value":129}`
+- `+14.4s` **9** · network/collect.shop.example · **ga4** · `purchase` `{"tid":"G-DEMO123","gcs":"G101","transaction_id":"A-1042","currency":"USD","value":129}`
+- `+14.5s` **10** · network/collect.shop.example · **ga4** · `purchase` `{"tid":"G-DEMO123","gcs":"G101","transaction_id":"A-1042","currency":"USD","value":129}`
 
 ---
 
@@ -69,5 +76,4 @@ Pattern-based redaction masks detected emails, phones and IP addresses, plus val
 
 Hand this file to Claude Code with the `pulsecheck-analyze` skill (`skill/SKILL.md`),
 or just ask: "analyse this tracking dump as an audit".
-The machine-readable version of the same session is the `.jsonl` next to it
-(schema v1, docs/dump-format.md).
+Save .jsonl in the panel for the machine-readable version of the same session (schema v1, docs/dump-format.md).

@@ -10,6 +10,8 @@ const state = {
   allRequests: false,
   seq: 0,
   events: [],
+  shown: 0,
+  dropped: 0,
   startedAt: Date.now(),
   page: '',
   userAgent: '',
@@ -19,6 +21,8 @@ const state = {
 
 const $ = (id) => document.getElementById(id);
 const list = $('list');
+const emptyState = $('empty').cloneNode(true);
+const errors = new Map();
 
 // --- capture: network --------------------------------------------------
 // Request payloads are what we need, so postData is enough - no getContent()
@@ -60,7 +64,7 @@ chrome.devtools.network.onRequestFinished.addListener((entry) => {
       });
     }
   } catch (err) {
-    fail('request capture failed: ' + err.message);
+    fail('capture', 'request capture failed: ' + err.message);
   }
 });
 
@@ -80,7 +84,7 @@ async function arm() {
   const src = await (await fetch('tap.js')).text();
   if (!state.recording) return;
   chrome.devtools.inspectedWindow.eval(src, (_res, err) => {
-    fail(err ? 'could not attach the dataLayer tap: ' + (err.description || err.code || '') : '');
+    fail('tap', err ? 'could not attach the dataLayer tap: ' + (err.description || err.code || '') : '');
   });
 }
 
@@ -99,6 +103,8 @@ function drain() {
       let payload;
       try { payload = JSON.parse(res); } catch { return; }
       if (payload.page) state.page = payload.page;
+      state.dropped += payload.dropped || 0;
+      if (state.dropped > 0) fail('buffer', state.dropped + ' dataLayer pushes dropped: tap buffer full');
       for (const item of payload.items) {
         const d = parseDataLayer(item.msg);
         add({
@@ -108,6 +114,8 @@ function drain() {
           params: item.layer === 'dataLayer' ? d.params : { ...d.params, _layer: item.layer },
           ts: item.ts,
           page: item.page,
+          historical: item.historical,
+          truncated: item.truncated,
         });
       }
     },
@@ -116,8 +124,6 @@ function drain() {
 
 // --- session -----------------------------------------------------------
 function add(ev) {
-  const empty = $('empty');
-  if (empty) empty.remove();
   const e = {
     type: 'event',
     seq: ++state.seq,
@@ -131,10 +137,18 @@ function add(ev) {
   if (ev.transport) e.transport = ev.transport;
   if (ev.url) e.url = ev.url;
   if (ev.raw) e.raw = ev.raw;
+  if (ev.historical) e.historical = true;
+  if (ev.truncated) e.truncated = true;
   state.events.push(e);
   // Consent stamping and final numbering happen in buildSession, over a
   // time-sorted timeline - `seq` here is only capture order for the UI.
-  if (visible(e)) list.appendChild(row(e));
+  if (visible(e)) {
+    const el = row(e);
+    const empty = $('empty');
+    if (empty) empty.remove();
+    list.appendChild(el);
+    state.shown++;
+  } else if (!state.shown) renderEmpty();
   paint();
 }
 
@@ -152,11 +166,13 @@ function row(e) {
   el.setAttribute('aria-expanded', 'false');
   const t = ((e.ts - state.startedAt) / 1000).toFixed(1);
   const preview = JSON.stringify(e.params);
-  for (const [cls, text, attr] of [['t', '+' + t + 's'], ['v', e.vendor, e.vendor], ['e', e.event], ['p', preview]]) {
+  for (const [cls, text, attr] of [['t', e.historical ? 'before' : '+' + t + 's'], ['v', e.vendor, e.vendor], ['e', e.event], ['p', preview]]) {
     const span = document.createElement('span');
     span.className = cls;
     span.textContent = text;
     if (attr) span.dataset.vendor = attr;
+    if (cls === 't' && e.historical) span.title = 'dataLayer entry from before the panel opened; its time is the snapshot time';
+    if (cls === 'p' && e.truncated) span.title = 'Payload clipped at 200 keys / depth 6';
     el.appendChild(span);
   }
   const toggle = () => {
@@ -179,40 +195,54 @@ function row(e) {
   return el;
 }
 
+function renderEmpty() {
+  if (state.shown) return;
+  const hint = emptyState.cloneNode(true);
+  if (state.events.length) hint.textContent = 'Nothing matches the filter.';
+  list.replaceChildren(hint);
+}
+
 function repaintList() {
   list.textContent = '';
-  let shown = 0;
-  for (const e of state.events) if (visible(e)) { list.appendChild(row(e)); shown++; }
-  if (!shown) {
-    const hint = document.createElement('div');
-    hint.id = 'empty';
-    hint.textContent = state.events.length ? 'Nothing matches the filter.' : 'Walk through your scenario on the page and events appear here.';
-    list.appendChild(hint);
-  }
+  state.shown = 0;
+  for (const e of state.events) if (visible(e)) { list.appendChild(row(e)); state.shown++; }
+  renderEmpty();
   paint();
 }
 
+function setVendorVisible(vendor, chip, on) {
+  on ? state.hidden.delete(vendor) : state.hidden.add(vendor);
+  chip.classList.toggle('on', on);
+  chip.setAttribute('aria-pressed', String(on));
+}
+
 function paint() {
-  $('count').textContent = state.events.length + (state.events.length === 1 ? ' event' : ' events');
+  const total = state.events.length;
+  $('count').textContent = (state.shown === total ? '' : state.shown + ' of ') + total + (total === 1 ? ' event' : ' events');
   const vendors = [...new Set(state.events.map((e) => e.vendor))];
   const chips = $('chips');
   if (chips.dataset.keys === vendors.join()) return;
   chips.dataset.keys = vendors.join();
   chips.textContent = '';
   for (const v of vendors) {
-    const c = document.createElement('span');
-    c.className = 'chip' + (state.hidden.has(v) ? '' : ' on');
+    const c = document.createElement('button');
+    c.type = 'button';
+    c.className = 'chip';
+    setVendorVisible(v, c, !state.hidden.has(v));
     c.textContent = v;
     c.addEventListener('click', () => {
-      state.hidden.has(v) ? state.hidden.delete(v) : state.hidden.add(v);
-      c.classList.toggle('on');
+      setVendorVisible(v, c, state.hidden.has(v));
       repaintList();
     });
     chips.appendChild(c);
   }
 }
 
-const fail = (msg) => { $('err').textContent = msg; };
+function fail(source, msg) {
+  if (msg) errors.set(source, msg);
+  else errors.delete(source);
+  $('err').textContent = [...errors.values()].join(' · ');
+}
 
 // --- export ------------------------------------------------------------
 function session() {
@@ -222,7 +252,7 @@ function session() {
     notes: $('notes').value.trim(),
     userAgent: state.userAgent,
     events: state.events,
-    capture: { allRequests: state.allRequests },
+    capture: { allRequests: state.allRequests, dropped: state.dropped },
   });
 }
 
@@ -244,17 +274,24 @@ $('jsonl').addEventListener('click', () => save(toJsonl, '.jsonl', 'application/
 
 $('copy').addEventListener('click', async () => {
   const md = toMarkdown(session());
+  let copied = false;
   try {
     await navigator.clipboard.writeText(md);
+    copied = true;
   } catch {
     const ta = document.createElement('textarea');
     ta.value = md;
     document.body.appendChild(ta);
     ta.select();
-    document.execCommand('copy');
-    ta.remove();
+    try {
+      copied = document.execCommand('copy');
+    } catch {
+      copied = false;
+    } finally {
+      ta.remove();
+    }
   }
-  $('copy').textContent = 'Copied';
+  $('copy').textContent = copied ? 'Copied' : 'Copy failed';
   setTimeout(() => ($('copy').textContent = 'Copy .md'), 1500);
 });
 
@@ -264,7 +301,7 @@ $('rec').addEventListener('click', () => {
   else stopTap();
   $('rec').className = state.recording ? 'on' : 'off';
   $('recLabel').textContent = state.recording ? 'Recording' : 'Paused';
-  $('rec').title = state.recording ? 'Pause capture' : 'Resume capture';
+  $('rec').title = state.recording ? 'Pause recording' : 'Resume recording';
 });
 
 $('all').addEventListener('click', () => {
@@ -279,8 +316,11 @@ $('all').addEventListener('click', () => {
 $('clear').addEventListener('click', () => {
   state.events = [];
   state.seq = 0;
+  state.dropped = 0;
+  fail('buffer', '');
   state.startedAt = Date.now();
   $('chips').dataset.keys = '';
+  $('chips').textContent = '';
   repaintList();
 });
 
