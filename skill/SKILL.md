@@ -8,9 +8,9 @@ description: Analyze a pulsecheck session dump (pulsecheck-*.md or session.jsonl
 Turn a pulsecheck dump into an audit report in the Good Labs deliverable
 format. Input, either form (see docs/dump-format.md):
 
-- `pulsecheck-<host>-<date>.md` - the usual case. Carries session meta, a
-  vendor inventory, mechanical checks the panel already ran, and the full
-  timeline with every parameter.
+- `pulsecheck-<host>-<date>.md` - the usual case. Carries session meta,
+  automatic checks, vendor inventory, top events, redaction details and the
+  full timeline with every parameter.
 - `pulsecheck-<host>-<date>.jsonl` - schema v1, one event per line. Prefer
   this when both are present: it is exact, and `seq` numbers are the
   evidence you cite.
@@ -24,20 +24,31 @@ or a markdown plan).
    `schema:1` and every line parses as JSON; report and skip bad lines, do
    not abort. `tool` reads `"pulsecheck"`, or `"signal-tap"` on dumps from
    the pre-rename alpha - both are valid v1, do not reject either. For the `.md`, read the meta table and the timeline; each
-   timeline line is `+Ns · seq · source · vendor · event · params`.
-   The panel's own "Automatic checks" section is a starting point, not the
-   answer - re-derive its numbers from the timeline and say so if they
-   disagree (a mismatch means the dump was edited).
+   timeline line is `+Ns · seq · source · vendor · event · params` (`before`
+   for pre-recording dataLayer snapshots; their timestamp is snapshot time).
+   The panel's own "Automatic checks" section is a starting point. Re-check
+   it against the timeline where possible and flag unexplained differences.
+   Redaction can hide distinctions in original duplicate keys, so exact
+   reproduction from the exported payloads may be impossible.
 2. **Inventory**: events per vendor, unique event names with counts,
    dataLayer messages vs network hits, `unparsed`/`generic` share (a high
    share is itself a finding: unknown senders on the page).
 3. **Checks** (each produces findings with severity high/medium/low):
-   - **Duplicates**: same vendor + event + value within 2s; missing or
-     colliding dedup keys (`eid` for Meta, `insert_id` for Amplitude,
-     `event_id` for TikTok). For Meta: pixel + CAPI pairs without matching
-     `eid` = high (double counting).
-   - **Consent**: events sent while the relevant GCM storage was `denied`;
-     vendors firing before any consent default was set.
+   - **Duplicates**: same vendor + stream + event + order id anywhere in the
+     session, or same vendor + stream + browser dedup key (`eid` for Meta, event name included for Meta and TikTok,
+     `insert_id` for Amplitude, `event_id` for TikTok), or identical stable
+     payloads within 2s, excluding volatile fields. Floodlight `ord` is an
+     order id only on sales tags (`qty` or `cost` present). Checks compare
+     original payloads before redaction; displayed keys are redacted.
+     Repeated browser dedup keys mean doubled browser events: this capture
+     cannot observe or establish pixel + CAPI pairs.
+   - **Consent**: observations under denied Google Consent Mode storage:
+     `cookieless` means the Google hit's `gcs` agrees with denied (expected),
+     `mismatch` means it claims granted, `unsigned` means no decodable `gcs`,
+     and `ungated` means Meta/TikTok fired despite denied ad storage.
+     The legal reading is the skill's job, not a verdict in the file.
+     Judge vendors outside Consent Mode (Metrica, Amplitude) from the timeline;
+     the file does not classify them. Also review hits before any default.
    - **PII**: `redacted:true` lines - report field and location (already
      masked); PII in a URL = high severity always.
    - **Naming**: event names against snake_case `{object}_{action}`

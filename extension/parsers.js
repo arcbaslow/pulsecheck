@@ -57,6 +57,28 @@ const num = (v) => {
   return Number.isFinite(n) && v !== '' ? n : v;
 };
 
+const gads = {
+  id: 'gads',
+  match: (r) => /(^|\.)(googleadservices\.com|doubleclick\.net|google\.[a-z]{2,3}(\.[a-z]{2})?)$/.test(r.host) &&
+    /^\/pagead\/(1p-)?(viewthrough)?conversion\/(\d+)\/?$/.test(r.path),
+  extract(r) {
+    const [, word, id] = /^\/pagead\/([^/]+)\/(\d+)/.exec(r.path);
+    return [{ vendor: 'gads', event: word === '1p-conversion' ? '1p_conversion' : word, params: { ...r.q, id } }];
+  },
+};
+
+// Floodlight pings also arrive on td.doubleclick.net under /td/fls/rul/, so
+// the activity word is matched anywhere in the path, on any doubleclick host.
+const floodlight = {
+  id: 'floodlight',
+  match: (r) => /(^|\.)doubleclick\.net$/.test(r.host) && /\/(activity[ij](;|$)|ddm\/activity\/)/.test(r.path),
+  extract(r) {
+    const tail = r.path.replace(/^.*?\/(activity[ij];?|ddm\/activity\/)/, '');
+    const params = { ...urlencoded(tail.replace(/;/g, '&')), ...r.q };
+    return [{ vendor: 'floodlight', event: [params.type, params.cat].filter(Boolean).join('/') || 'activity', params }];
+  },
+};
+
 // --- ga4 ---------------------------------------------------------------
 // sGTM runs on client-owned domains, so host matching alone is not enough:
 // the query signature (v=2 + tid=G-) identifies GA4 anywhere.
@@ -67,6 +89,21 @@ const ga4 = {
     (r.q.v === '2' && /^G-/.test(r.q.tid || '')) ||
     (r.host.endsWith('google-analytics.com') && r.path.includes('collect')),
   extract(r) {
+    const body = r.method === 'POST' ? json(r.body) : null;
+    if (body && !Array.isArray(body) && Array.isArray(body.events)) {
+      return body.events.map((e) => {
+        const params = { ...e?.params };
+        const tid = r.q.measurement_id || r.q.firebase_app_id;
+        if (tid) params.tid = tid;
+        for (const key of ['client_id', 'app_instance_id', 'user_id', 'timestamp_micros']) {
+          if (key in body) params[key] = body[key];
+        }
+        if (body.consent && typeof body.consent === 'object' && !Array.isArray(body.consent)) params.consent = body.consent;
+        if (r.path === '/debug/mp/collect') params.debug_mode = true;
+        delete params.api_secret;
+        return { vendor: 'ga4', event: e?.name || '(no event name)', params };
+      });
+    }
     const base = r.q;
     // POST batch: one event per body line, each line overriding the shared query params.
     const lines = r.method === 'POST' && r.body ? r.body.split('\n').filter((l) => l.trim()) : [];
@@ -119,8 +156,11 @@ const meta = {
 // --- metrica -----------------------------------------------------------
 const metrica = {
   id: 'metrica',
-  match: (r) => /(^|\.)(mc\.yandex\.(ru|com)|mc\.webvisor\.(org|com))$/.test(r.host) && r.path.startsWith('/watch'),
+  match: (r) => /(^|\.)(mc\.yandex\.(ru|com)|mc\.webvisor\.(org|com))$/.test(r.host) &&
+    (r.path.startsWith('/watch') || /^\/(webvisor|clmap)\/\d+/.test(r.path)),
   extract(r) {
+    const recording = /^\/(webvisor|clmap)\/(\d+)/.exec(r.path);
+    if (recording) return [{ vendor: 'metrica', event: recording[1] === 'clmap' ? 'clickmap' : 'webvisor', params: { counter: recording[2] } }];
     const row = { ...r.q, ...(r.method === 'POST' ? form(r.body) : {}) };
     const counter = (/^\/watch\/(\d+)/.exec(r.path) || [])[1] || row['counter-id'] || '';
     const pageUrl = row['page-url'] || '';
@@ -150,7 +190,7 @@ const metrica = {
 const amplitude = {
   id: 'amplitude',
   match: (r) =>
-    (r.host.includes('amplitude.com') && /(httpapi|batch|collect)/.test(r.path)) ||
+    (/(^|\.)amplitude\.com$/.test(r.host) && /(httpapi|batch|collect)/.test(r.path)) ||
     (r.method === 'POST' && /"api_key"|api_key=/.test(r.body) && /"events?"|[?&]e=/.test(r.body)),
   extract(r) {
     let payload = json(r.body);
@@ -256,7 +296,7 @@ const generic = {
   },
 };
 
-export const parsers = [ga4, meta, metrica, amplitude, tiktok, generic];
+export const parsers = [gads, floodlight, ga4, meta, metrica, amplitude, tiktok, generic];
 
 /**
  * dataLayer messages arrive as plain objects, arrays, or gtag `arguments`
@@ -285,6 +325,7 @@ export function parseDataLayer(msg) {
  * `unparsed` record instead of losing the request. Returns [] if no match.
  */
 export function parse(req) {
+  let emptyMatch;
   for (const p of parsers) {
     let matched = false;
     try { matched = p.match(req); } catch { matched = false; }
@@ -292,6 +333,7 @@ export function parse(req) {
     try {
       const events = p.extract(req) || [];
       if (events.length) return events.map((e) => ({ ...e, url: req.url, transport: req.transport }));
+      if (p.id !== 'generic' && !emptyMatch) emptyMatch = p.id;
     } catch (err) {
       return [{
         vendor: 'unparsed',
@@ -303,5 +345,12 @@ export function parse(req) {
       }];
     }
   }
-  return [];
+  return emptyMatch ? [{
+    vendor: 'unparsed',
+    event: '(' + emptyMatch + ' matched, nothing decoded)',
+    params: {},
+    url: req.url,
+    transport: req.transport,
+    raw: (req.body || '').slice(0, 4096),
+  }] : [];
 }

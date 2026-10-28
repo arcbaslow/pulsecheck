@@ -76,7 +76,7 @@ Click any row to expand its full parameters.
 
 - **Network** - fetch, XHR, sendBeacon and pixel requests. Parsers for GA4
   (including server-side GTM on custom domains, regional endpoints and
-  batched hits), Meta Pixel, Yandex Metrica, Amplitude and TikTok, plus a
+  batched hits), Meta Pixel, Yandex Metrica, Amplitude, TikTok, Google Ads conversion and Floodlight, plus a
   generic parser that catches anything event-shaped - including home-grown
   first-party collectors, which are the usual blind spot.
 - **dataLayer** - every push, including ones from before the panel opened,

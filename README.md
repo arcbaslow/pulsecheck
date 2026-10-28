@@ -59,7 +59,7 @@ not counted as tracking events or duplicates.
 
 - Network requests sent with fetch, XHR, `sendBeacon` or pixels.
 - GA4, including batched hits, regional endpoints and custom-domain sGTM.
-- Meta Pixel, Yandex Metrica, Amplitude and TikTok.
+- Meta Pixel, Yandex Metrica, Amplitude, TikTok, Google Ads conversion and Floodlight.
 - Event-shaped first-party collectors through a generic fallback.
 - Existing and new `dataLayer` pushes, including custom names containing
   `dataLayer`, plus `digitalData`.

@@ -8,12 +8,14 @@
   }
 
   const buf = [];
+  let dropped = 0;
   const RECORDING_LEASE_MS = 60000;
   let expiresAt = Date.now() + RECORDING_LEASE_MS;
   let timer = null;
   const stop = () => {
     expiresAt = 0;
     buf.length = 0;
+    dropped = 0;
     clearInterval(timer);
     timer = null;
   };
@@ -23,35 +25,45 @@
   };
 
   // JSON-safe clone: cuts cycles, DOM nodes, functions, and runaway depth.
-  const safe = (v, depth = 0, seen = new Set()) => {
+  const safe = (v, clipping, depth = 0, seen = new Set()) => {
     if (v === null || typeof v === 'number' || typeof v === 'boolean' || typeof v === 'string') return v;
     if (v === undefined) return null;
     if (typeof v === 'function') return '[function ' + (v.name || 'anonymous') + ']';
     if (typeof v !== 'object') return String(v);
     if (v instanceof Date) return v.toISOString();
     if (typeof Node !== 'undefined' && v instanceof Node) return '[' + (v.nodeName || 'Node') + ']';
-    if (depth > 6) return '[depth]';
+    if (depth > 6) { clipping.truncated = true; return '[depth]'; }
     if (seen.has(v)) return '[circular]';
     seen.add(v);
-    if (Array.isArray(v)) return v.slice(0, 200).map((x) => safe(x, depth + 1, seen));
+    if (Array.isArray(v)) {
+      if (v.length > 200) clipping.truncated = true;
+      return v.slice(0, 200).map((x) => safe(x, clipping, depth + 1, seen));
+    }
     const out = {};
-    for (const k of Object.keys(v).slice(0, 200)) {
-      try { out[k] = safe(v[k], depth + 1, seen); } catch { out[k] = '[unreadable]'; }
+    const keys = Object.keys(v);
+    if (keys.length > 200) clipping.truncated = true;
+    for (const k of keys.slice(0, 200)) {
+      try { out[k] = safe(v[k], clipping, depth + 1, seen); } catch { out[k] = '[unreadable]'; }
     }
     return out;
   };
 
-  const record = (name, msg) => {
+  const record = (name, msg, historical) => {
     if (!recording()) return;
-    if (buf.length > 5000) return; // panel drains every 500ms; this is a runaway guard
-    try { buf.push({ ts: Date.now(), layer: name, page: location.href, msg: safe(msg) }); } catch { /* never break the page */ }
+    if (buf.length >= 5000) { dropped++; return; } // panel drains every 500ms; this is a runaway guard
+    try {
+      const item = { ts: Date.now(), layer: name, page: location.href };
+      item.msg = safe(msg, item);
+      if (historical) item.historical = true;
+      buf.push(item);
+    } catch { /* never break the page */ }
   };
 
   const wrap = (arr, name, snapshot) => {
     if (!arr || typeof arr.push !== 'function' || arr.push.__pulsecheck) return;
     if (!arr.__pulsecheckSnapshot) {
       Object.defineProperty(arr, '__pulsecheckSnapshot', { value: true, enumerable: false });
-      if (snapshot) for (const m of arr) record(name, m); // pushes that happened before injection
+      if (snapshot) for (const m of arr) record(name, m, true); // pushes that happened before injection
     }
     const orig = arr.push.bind(arr);
     const patched = function (...args) {
@@ -97,7 +109,9 @@
     stop,
     drain: () => {
       renew();
-      return { page: location.href, items: buf.splice(0, buf.length) };
+      const batch = { page: location.href, items: buf.splice(0, buf.length), dropped };
+      dropped = 0;
+      return batch;
     },
   };
   scan();
