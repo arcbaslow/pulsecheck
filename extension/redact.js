@@ -196,23 +196,28 @@ const decodePart = (s) => { try { return decodeURIComponent(s); } catch { return
 // The delimiter is a literal `;` (an encoded one belongs to a value), so each
 // pair is decoded on its own and only changed values are re-encoded.
 function redactPairs(encodedSeg, field, hits, urlDepth) {
+  const keys = new Map();
   return encodedSeg.split(';').map((encodedPair) => {
     const pair = decodePart(encodedPair);
     const eq = pair.indexOf('=');
     if (eq < 0) return encodedPair;
     const k = pair.slice(0, eq);
     const v = pair.slice(eq + 1);
-    const masked = redactValue(k, v, `${field}.${k}`, hits, urlDepth);
-    return masked === v ? encodedPair : k + '=' + encodeURIComponent(String(masked));
+    const key = redactKey(k, field, hits, keys);
+    const masked = redactValue(k, v, `${field}.${key}`, hits, urlDepth);
+    return key === k && masked === v ? encodedPair : encodeURIComponent(key) + '=' + encodeURIComponent(String(masked));
   }).join(';');
 }
+
+const keyedSegment = (key) => SENSITIVE_KEY.test(key) || PII_KEY.test(key) || NAME_KEY.test(key) || NATIONAL_ID_KEY.test(key);
 
 function redactSegments(s, field, hits, urlDepth = 0) {
   const encoded = s.split('/');
   const parts = encoded.map(decodePart);
   return parts.map((part, i) => {
-    if (encoded[i].includes(';') && encoded[i].includes('=')) return redactPairs(encoded[i], `${field}.${i}`, hits, urlDepth);
     const key = parts[i - 1] || '';
+    // A segment under a sensitive or personal key is one value whatever it contains.
+    if (!keyedSegment(key) && encoded[i].includes(';') && encoded[i].includes('=')) return redactPairs(encoded[i], `${field}.${i}`, hits, urlDepth);
     const masked = redactValue(KEEP.test(key) ? '' : key, part, `${field}.${i}`, hits, urlDepth);
     return masked === part ? encoded[i] : encodeURIComponent(masked);
   }).join('/');

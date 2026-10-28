@@ -621,6 +621,17 @@ t('Floodlight semicolon path pairs get key-based redaction in the full export', 
   assert.ok(s.checks.pii.some((p) => p.path === 'url.path.1.token' && p.kind === 'secret' && p.inUrl));
 });
 
+t('semicolon pairs do not bypass the previous-segment key rule or leak keys into finding paths', () => {
+  const keyed = redactEvent({ url: 'https://a.kz/token/secret-marker;foo=bar' });
+  assert.ok(!keyed.event.url.includes('secret-marker'), keyed.event.url);
+  assert.ok(keyed.hits.some((h) => h.kind === 'secret'));
+  const url = 'https://12345.fls.doubleclick.net/activityi;src=12345;type=sales;alice@example.com=%2B77011234567?';
+  const { event, hits } = redactEvent({ url });
+  assert.ok(!event.url.includes('alice@example.com') && !event.url.includes('77011234567'), event.url);
+  assert.ok(hits.every((h) => !h.path.includes('alice@example.com')), JSON.stringify(hits));
+  assert.ok(event.url.includes('activityi;src=12345;type=sales;'), event.url);
+});
+
 t('PII in the URL query is masked and located', () => {
   const { event, hits } = redactEvent({ url: 'https://sgtm.example.kz/g/collect?en=lead&customer=a.person@mail.ru' });
   assert.ok(!event.url.includes('a.person@mail.ru'));
