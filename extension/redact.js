@@ -189,11 +189,29 @@ function walk(obj, path, hits, urlDepth = 0) {
   return out;
 }
 
+const decodePart = (s) => { try { return decodeURIComponent(s); } catch { return s; } };
+
+// Floodlight packs `key=value` pairs into one path segment with `;`, so such a
+// segment gets the query-string key rules instead of the segment-as-value rule.
+// The delimiter is a literal `;` (an encoded one belongs to a value), so each
+// pair is decoded on its own and only changed values are re-encoded.
+function redactPairs(encodedSeg, field, hits, urlDepth) {
+  return encodedSeg.split(';').map((encodedPair) => {
+    const pair = decodePart(encodedPair);
+    const eq = pair.indexOf('=');
+    if (eq < 0) return encodedPair;
+    const k = pair.slice(0, eq);
+    const v = pair.slice(eq + 1);
+    const masked = redactValue(k, v, `${field}.${k}`, hits, urlDepth);
+    return masked === v ? encodedPair : k + '=' + encodeURIComponent(String(masked));
+  }).join(';');
+}
+
 function redactSegments(s, field, hits, urlDepth = 0) {
-  const decode = (s) => { try { return decodeURIComponent(s); } catch { return s; } };
   const encoded = s.split('/');
-  const parts = encoded.map(decode);
+  const parts = encoded.map(decodePart);
   return parts.map((part, i) => {
+    if (encoded[i].includes(';') && encoded[i].includes('=')) return redactPairs(encoded[i], `${field}.${i}`, hits, urlDepth);
     const key = parts[i - 1] || '';
     const masked = redactValue(KEEP.test(key) ? '' : key, part, `${field}.${i}`, hits, urlDepth);
     return masked === part ? encoded[i] : encodeURIComponent(masked);

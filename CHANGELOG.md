@@ -9,7 +9,7 @@ Pulsecheck is now available on the
 - Classify consent observations by the hit's gcs claim and page state; exclude vendors outside Google Consent Mode.
 - Detect duplicate suspects by order ids, browser dedup keys and stable payloads before redaction.
 - Mark pre-recording dataLayer snapshots and report tap buffer losses and clipped payloads in exports.
-- Filter stamped consent, scan keep-listed identifiers for emails and plus-prefixed phones, clear URL userinfo and bound nested URL decoding.
+- Filter stamped consent, scan keep-listed identifiers for emails and plus-prefixed phones, clear URL userinfo, bound nested URL decoding and redact Floodlight path pairs by key.
 - Tighten Amplitude host matching, count Metrica recording endpoints, keep requests a parser matched but could not decode as unparsed records, and reorder the Markdown export around the checks.
 
 - Redact page URLs, URL-valued parameters, URL paths and fragments, event names and API secrets in exports; limit IP masking to whole addresses or IP-like keys, excluding version fields; clarify redaction limits and deliberate exceptions.
