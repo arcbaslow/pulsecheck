@@ -40,15 +40,15 @@ link opens only after a user clicks it and is not used as a code source.
 
 Conservatively disclose these handled data types:
 
-- Personally identifiable information — may appear in inspected tracking
+- Personally identifiable information - may appear in inspected tracking
   payloads; detected fields are masked before export.
-- Authentication information — named password, token, cookie and similar fields
+- Authentication information - named password, token, cookie and similar fields
   are removed before export.
-- Financial and payment information — named card, CVV, IBAN and account-number
+- Financial and payment information - named card, CVV, IBAN and account-number
   fields are removed before export.
-- Web history — inspected page URLs and tracking-request URLs.
-- User activity — analytics events can describe actions on the inspected page.
-- Website content — request payloads and data-layer values.
+- Web history - inspected page URLs and tracking-request URLs.
+- User activity - analytics events can describe actions on the inspected page.
+- Website content - request payloads and data-layer values.
 
 For each type, state that processing is local, necessary for the single audit
 purpose, not transmitted to the developer and not retained outside the
