@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.png" alt="Pulsecheck" width="880">
+  <img src="assets/hero.jpg" alt="Pulsecheck: a doctor robot listens to a browser window with a stethoscope while a paper tape of heartbeat blips runs out, read by one robot with a magnifier and logged by another." width="100%">
 </p>
 
 # Pulsecheck
@@ -13,6 +13,8 @@ exports the session as Markdown or JSONL.
 The Markdown file is the main output. It contains enough context to review the
 session by hand or give it to an LLM: scenario, vendors, checks, parameters and
 the full event order.
+
+[Install](#install) | [How a recording works](#how-a-recording-works) | [Output](#output) | [Privacy](#privacy) | [Where it fits](#where-it-fits)
 
 ![Pulsecheck recording a session](store/01-session-1280x800.png)
 
@@ -54,6 +56,24 @@ site requests. It excludes request bodies and query strings. Context rows are
 not counted as tracking events or duplicates.
 
 ![Expanded event details](store/02-event-1280x800.png)
+
+## How a recording works
+
+```mermaid
+flowchart LR
+  A["Network hits<br/>fetch, XHR, sendBeacon, pixels"] --> P["Vendor parsers<br/>or generic fallback"]
+  B["dataLayer and<br/>digitalData pushes"] --> T
+  B --> C["Consent Mode commands<br/>split out of pushes"]
+  C --> T
+  P --> T["Timeline<br/>sorted by send time"]
+  T --> R["Consent replay,<br/>then redaction"]
+  R --> M["session .md"]
+  R --> J["session .jsonl"]
+  classDef step fill:#e8f5f0,stroke:#1D9E75,color:#17202a
+  class A,B,C,P,T,R,M,J step
+```
+
+Both exports are built from the same redacted event list, so they hold the same events in the same order.
 
 ## Captured data
 
@@ -115,6 +135,23 @@ See the full [`privacy policy`](PRIVACY.md).
 [`skill/SKILL.md`](skill/SKILL.md) describes the companion analysis workflow. It
 turns a Pulsecheck dump into an audit report and, when a tracking plan is
 provided, compares observed events and parameters with the plan.
+
+## Where it fits
+
+```mermaid
+flowchart LR
+  A["Figma design"] -- "figma-taxonomy-gen" --> B["Tracking plan"]
+  B --> C["GTM container"]
+  C -- "gtm-diff" --> D["Reviewed<br/>container change"]
+  D --> E["Live site"]
+  E -- "pulsecheck" --> F["Recorded session"]
+  F -- "analysis skill" --> G["Coverage vs plan"]
+  B -.-> G
+  classDef here fill:#e8f5f0,stroke:#1D9E75,color:#17202a
+  class F here
+```
+
+Each tool works on its own inputs and runs without the others. Give the analysis skill a plan from [figma-taxonomy-gen](https://github.com/arcbaslow/figma-taxonomy-gen) or a Markdown plan, and it reports planned events not seen in the session and seen events missing from the plan. [GTM Diff](https://github.com/arcbaslow/gtm-diff) reviews the container change before it reaches the site.
 
 ## Development
 
