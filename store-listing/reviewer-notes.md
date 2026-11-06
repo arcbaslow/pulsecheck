@@ -14,6 +14,8 @@ The toolbar popup only explains where to find the DevTools panel.
 
 The extension requests no permissions and makes no extension-owned network
 requests. It reads request information exposed to the open DevTools panel and
-injects only the bundled `tap.js` through the DevTools inspected-window API. All
-session state is in memory. The optional API-context mode is off by default and
+injects only the bundled `tap.js` through the DevTools inspected-window API; the
+panel reads `tap.js` from its own package with `fetch('tap.js')`. All session
+state is in memory, plus a short-lived data-layer buffer in the inspected page
+that is cleared on pause, panel close or a 60-second lease expiry. The optional API-context mode is off by default and
 does not retain request bodies or query strings.

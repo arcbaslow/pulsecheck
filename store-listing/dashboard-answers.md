@@ -8,7 +8,7 @@
 - Language: `English`
 - Homepage: `https://github.com/arcbaslow/pulsecheck`
 - Support: `https://github.com/arcbaslow/pulsecheck/issues`
-- Privacy policy: `https://goodlabs.kz/privacy`
+- Privacy policy: `https://goodlabs.kz/pulsecheck/privacy`
 
 Paste `description.txt` into the detailed-description field.
 
@@ -42,17 +42,21 @@ Conservatively disclose these handled data types:
 
 - Personally identifiable information - may appear in inspected tracking
   payloads; detected fields are masked before export.
-- Authentication information - named password, token, cookie and similar fields
-  are removed before export.
+- Authentication information - fields named password, secret, token,
+  authorization, cookie and the others listed in the privacy policy are removed
+  before export; `api_key` is kept for the audit.
 - Financial and payment information - named card, CVV, IBAN and account-number
   fields are removed before export.
+- Location - IP addresses can appear in inspected payloads; detected ones are
+  masked before export.
 - Web history - inspected page URLs and tracking-request URLs.
 - User activity - analytics events can describe actions on the inspected page.
 - Website content - request payloads and data-layer values.
 
 For each type, state that processing is local, necessary for the single audit
 purpose, not transmitted to the developer and not retained outside the
-in-memory session unless the user explicitly creates an export.
+in-memory session, including a short-lived buffer in the inspected page, unless
+the user explicitly creates an export.
 
 Certify that data is not sold, used for unrelated purposes, used for
 creditworthiness or lending, or transferred for advertising. The extension has

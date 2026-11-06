@@ -15,13 +15,15 @@ Pulsecheck includes parsers for GA4, Meta Pixel, Yandex Metrica, Amplitude, TikT
 
 The Markdown export contains session context, vendor inventory, automatic checks and the complete numbered timeline. JSONL contains the same event list as schema v1 for scripts and comparison tools.
 
+Recorded requests can contain personal data the inspected site sends, such as emails, phone numbers, user ids and IP addresses. Pulsecheck also records the page URL and reads your browser's user-agent string.
+
 Privacy:
 
 - no account, backend, telemetry or advertising;
 - no extension permissions;
-- sessions stay in memory and end when DevTools closes;
+- sessions stay in memory and end when DevTools closes; a short buffer in the inspected page is cleared on pause or panel close, or by a 60-second fallback if the panel stops responding;
 - files are created only when you save or copy them;
-- detected personal identifiers are masked before export; and
+- detected personal identifiers are masked before export, while client ids, event ids and api_key are kept because the audit needs them; and
 - named credential and payment-secret fields are removed completely.
 
 Optional API context records only method, host, path, status and MIME type for non-static site requests. Request bodies and query strings are excluded.

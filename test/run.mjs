@@ -502,6 +502,33 @@ t('unserialisable payloads never throw', () => {
 
 console.log('redaction');
 
+t('meta advanced matching fields are masked in params, URL and POST body', () => {
+  const h = 'f1d2'.repeat(16);
+  const url = `https://www.facebook.com/tr/?id=1234567890123456&ev=Purchase&ud[em]=${h}&ud[ph]=${h}&ud[fn]=${h}&ud[external_id]=u-4242&ud[zp]=050000&cd[value]=100`;
+  const [e] = run(url);
+  const { event } = redactEvent({ ...e, url });
+  for (const k of ['user.em', 'user.ph', 'user.fn', 'user.external_id', 'user.zp']) assert.notEqual(event.params[k], e.params[k], k);
+  assert.equal(event.params.value, '100');
+  assert.ok(!event.url.includes(h) && !event.url.includes('u-4242') && !event.url.includes('050000'));
+  const [post] = run('https://www.facebook.com/tr/', 'POST', `id=1234567890123456&ev=Lead&ud%5Bem%5D=${h}&udff%5Bph%5D=${h}`);
+  assert.ok(!JSON.stringify(redactEvent(post).event).includes(h));
+});
+
+t('ga4 user properties named like meta fields are kept', () => {
+  const url = 'https://region1.google-analytics.com/g/collect?v=2&tid=G-X&cid=1.2&en=page_view&up.country=KZ&up.ct=almaty';
+  const [e] = run(url);
+  const { event, hits } = redactEvent({ ...e, url });
+  assert.equal(event.params['user.country'], 'KZ');
+  assert.equal(event.params['user.ct'], 'almaty');
+  assert.equal(hits.length, 0);
+});
+
+t('phone_number, email_address and external_id keys are masked', () => {
+  const { event } = redactEvent({ params: { context: { user: { phone_number: 'a'.repeat(64), email_address: 'b'.repeat(64), external_id: 'crm-881' } } } });
+  const u = event.params.context.user;
+  assert.ok(!u.phone_number.includes('aaaa') && !u.email_address.includes('bbbb') && u.external_id !== 'crm-881');
+});
+
 t('nested URL two levels deep masks its phone', () => {
   const page_location = 'https://a.kz/?next=https%3A%2F%2Fb.kz%2F%3Fback%3Dhttps%253A%252F%252Fc.kz%252F%253Fphone%253D%252B77011234567';
   const { event, hits } = redactEvent({ params: { page_location } });

@@ -11,7 +11,7 @@ The upload package and listing material are generated for version `0.2.0`.
 - Upload package: `dist/pulsecheck-chrome-web-store-0.2.0.zip`
 - Listing copy and declarations: `store-listing/`
 - Graphic assets: `store/`
-- Privacy policy URL for the dashboard: `https://goodlabs.kz/privacy`
+- Privacy policy URL for the dashboard: `https://goodlabs.kz/pulsecheck/privacy`
   (`PRIVACY.md` is the in-repo copy of the same text)
 
 For future updates, use the existing listing and follow

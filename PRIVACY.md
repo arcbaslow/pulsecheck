@@ -1,6 +1,8 @@
 # Pulsecheck privacy policy
 
-Effective 7 September 2026. Applies to Pulsecheck 0.1.1 (alpha).
+Effective 6 November 2026. Applies to Pulsecheck 0.2.0 (alpha). The text for
+0.1.1 is kept at
+[tag v0.1.1](https://github.com/arcbaslow/pulsecheck/blob/v0.1.1/PRIVACY.md).
 
 This policy forms part of the Goodlabs privacy policy published at
 <https://goodlabs.kz/privacy#pulsecheck>, which is the canonical version and
@@ -59,7 +61,7 @@ The inspected page also holds a temporary buffer of data layer messages. The
 panel drains it every 500 ms while recording. Pausing or closing the panel
 explicitly stops the tap and clears this buffer. If that stop cannot run, a
 60-second fallback recording lease expires and clears it at the next timer tick or
-push. No further pushes are recorded until the panel renews the lease.
+push. No further pushes are recorded until the lease is renewed.
 
 Pulsecheck does not use `chrome.storage`, `localStorage`, `sessionStorage` or
 IndexedDB. Page-owned data layer arrays are not cleared by Pulsecheck.
@@ -67,8 +69,8 @@ IndexedDB. Page-owned data layer arrays are not cleared by Pulsecheck.
 ## 4. Exports
 
 A file is produced only when the user selects Save Markdown, Save JSONL or
-Copy. The file is generated locally and passed to the browser's download or
-clipboard functions.
+Copy, or copies one event with Copy redacted JSON. The file is generated
+locally and passed to the browser's download or clipboard functions.
 
 An export is thereafter under the user's control and is deleted by the user.
 Goodlabs does not receive a copy of any export.
@@ -84,8 +86,11 @@ following are masked:
   request URLs, page URLs and absolute HTTP(S) URL-valued parameters also have
   their authority, query parameters, path segments and fragments inspected;
 - values under keys denoting a person or a personal identifier, among them
-  `user_id`, `email`, `phone`, `first_name`, `surname`, `iin` and `passport`,
-  which are masked while retaining their shape;
+  `user_id`, `external_id`, `email`, `phone`, `phone_number`, `first_name`,
+  `surname`, `iin` and `passport`, and the Meta advanced matching fields
+  `ud[em]`, `ud[ph]`, `ud[fn]`, `ud[ln]`, `ud[db]`, `ud[ge]`, `ud[ct]`,
+  `ud[st]`, `ud[zp]`, `ud[country]` and `ud[external_id]` with their `udff[...]`
+  counterparts, which are masked while retaining their shape;
 - values under keys denoting a secret, among them `password`, `api_secret`,
   `apiSecret`, `secret`, `token`,
   `authorization`, `cookie`, `card_number`, `cvv` and `iban`, which are
@@ -109,13 +114,15 @@ identifiers: `/pin/123456789` is masked as a secret and `/order/87771234567` as 
 phone number. This trade-off favours hiding sensitive values over preserving
 every path identifier.
 
-Redaction uses key names and value patterns and is incomplete. Unrecognised
-formats, unnamed tokens and personal information in free text can escape
-detection. Certain identifiers, among them client ids (`cid`), `event_id`,
-`insert_id` and `api_key`, are retained deliberately because the audit needs
-them. In request URLs, inline detection can still mask phone-shaped KEEP values
-(for example, `_p=81234567890`), while the same value in `params` is retained;
-this favours hiding possible phone numbers over preserving unusual identifiers.
+Redaction uses key names and value patterns and is incomplete. Values under key
+names not on these lists are checked only by value pattern, so hashed or plain
+identifiers under other names are retained. Unrecognised formats, unnamed
+tokens and personal information in free text can escape detection. Certain
+identifiers, among them client ids (`cid`), `event_id`, `insert_id` and
+`api_key`, are retained deliberately because the audit needs them. Values under
+these keys are still checked for email addresses and `+`-prefixed telephone
+numbers, in request URLs and in `params` alike; other phone-shaped values and IP
+addresses under them, such as `_p=81234567890`, are retained.
 Every event name undergoes inline pattern detection, and paths in
 `METHOD /path` names use the same segment rules as URL paths. Event names and
 audit-subject fields such as `event_name`, `page_name`, `item_name` and
@@ -130,7 +137,7 @@ is alpha software and its redaction is a mitigation, not a guarantee.
 
 To observe data layer messages, Pulsecheck injects a script into the inspected
 page using `chrome.devtools.inspectedWindow.eval`. The script replaces the
-`push` method of arrays named `dataLayer` or `digitalData` with a wrapper that
+`push` method of `digitalData` and of arrays whose name contains `datalayer` with a wrapper that
 records the message and then calls the original method, leaving the behaviour of
 the page unchanged. The replacement is defined as non-enumerable and does not
 appear in `Object.keys(dataLayer)` or in the page's own enumeration.
@@ -141,7 +148,13 @@ stop cannot run. Wrappers can remain installed until the page reloads, but pass
 pushes through without recording while stopped. Resuming an existing tap skips
 entries accumulated while stopped. If the page loaded while paused, resuming
 injects a fresh tap whose first scan records that page's existing data layer
-entries with the resume timestamp. No other part of the page is modified.
+entries with the resume timestamp.
+
+The script also adds a `window.__pulsecheck` control object and the
+non-enumerable markers `__pulsecheckPatched` and `__pulsecheckSnapshot` on the
+arrays it wraps, and runs a one-second scan timer while recording. The object
+and the markers remain until the page reloads. No other part of the page is
+modified.
 
 ## 7. Permissions
 

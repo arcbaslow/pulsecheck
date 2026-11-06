@@ -6,7 +6,12 @@ const EMAIL = /[\w.!#$%&'*+/=?^`{|}~-]+@[\w-]+(?:\.[\w-]+)+/g;
 const HAS_EMAIL = new RegExp(EMAIL.source); // /g regexes are stateful in .test()
 
 // Keys whose value is PII regardless of shape.
-const PII_KEY = /^(user[._]?id|uid|device[._]?id|em|ph|fn|ln|e[-_]?mail|email|phone|tel|telephone|msisdn|customer[._]?id)$/i;
+const PII_KEY = /^(user[._]?id|uid|device[._]?id|em|ph|fn|ln|e[-_]?mail|email|e[-_]?mail[._]?address|phone|phone[._]?number|tel|telephone|msisdn|customer[._]?id|external[._]?id)$/i;
+
+// Meta advanced matching values are hashes, so only the key gives them away. GA4 `up.*` also parses to `user.*`, hence the vendor gate.
+const META_FIELDS = 'em|ph|fn|ln|db|ge|ct|st|zp|country|external_id';
+const META_WIRE_KEY = new RegExp(`^(?:ud|udff)\\[(?:${META_FIELDS})\\]$`, 'i');
+const META_PARSED_KEY = new RegExp(`^user\\.(?:${META_FIELDS})$`, 'i');
 
 // Credentials and payment secrets must never survive an export. Unlike PII,
 // preserving their shape has no audit value, so replace the entire value.
@@ -137,7 +142,7 @@ function redactEmbedded(s, path, hits, key = '', urlValues = false, urlDepth = 0
   return redactInline(s, path, hits, key, KEEP.test(key));
 }
 
-function redactValue(key, value, path, hits, urlDepth = 0) {
+function redactValue(key, value, path, hits, urlDepth = 0, meta = false) {
   if (value === null || value === undefined) return value;
   if (typeof value === 'object') return walk(value, path, hits, urlDepth);
   const s = String(value);
@@ -147,7 +152,7 @@ function redactValue(key, value, path, hits, urlDepth = 0) {
     hits.push({ path, kind: 'secret' });
     return '[redacted]';
   }
-  if (PII_KEY.test(key) || NAME_KEY.test(key) || NATIONAL_ID_KEY.test(key)) {
+  if (PII_KEY.test(key) || META_WIRE_KEY.test(key) || (meta && META_PARSED_KEY.test(key)) || NAME_KEY.test(key) || NATIONAL_ID_KEY.test(key)) {
     if (!s) return value;
     hits.push({ path, kind: NATIONAL_ID_KEY.test(key) ? 'national_id' : NAME_KEY.test(key) ? 'name' : 'identifier' });
     return HAS_EMAIL.test(s) ? maskEmail(s) : looksLikePhone(s) ? maskPhone(s) : maskName(s);
@@ -178,13 +183,13 @@ function redactKey(key, path, hits, keys) {
   return unique;
 }
 
-function walk(obj, path, hits, urlDepth = 0) {
+function walk(obj, path, hits, urlDepth = 0, meta = false) {
   if (Array.isArray(obj)) return obj.map((v, i) => redactValue('', v, `${path}[${i}]`, hits, urlDepth));
   const out = {};
   const keys = new Map();
   for (const [k, v] of Object.entries(obj)) {
     const key = redactKey(k, path, hits, keys);
-    out[key] = redactValue(k, v, path ? `${path}.${key}` : key, hits, urlDepth);
+    out[key] = redactValue(k, v, path ? `${path}.${key}` : key, hits, urlDepth, meta);
   }
   return out;
 }
@@ -314,7 +319,7 @@ export function redactEvent(event) {
     });
     out.event = redactInline(out.event, 'event', hits);
   }
-  if (out.params) out.params = walk(out.params, '', hits);
+  if (out.params) out.params = walk(out.params, '', hits, 0, out.vendor === 'meta');
   if (out.consent) out.consent = walk(out.consent, 'consent', hits);
   if (out.url) out.url = redactUrl(out.url, hits);
   if (out.page) out.page = redactUrl(out.page, hits, 'page');
