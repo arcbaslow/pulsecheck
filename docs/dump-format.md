@@ -34,7 +34,7 @@ therefore always identical, in both outputs. `seq` is what findings cite.
 ## Session header (line 1)
 
 ```json
-{"type":"session","schema":1,"tool":"pulsecheck","version":"0.1.1",
+{"type":"session","schema":1,"tool":"pulsecheck","version":"0.2.0",
  "startedAt":1754812800000,"page":"https://example.kz/loan",
  "userAgent":"...","notes":"","capture":{"allRequests":false,"dropped":0,"truncated":0}}
 ```

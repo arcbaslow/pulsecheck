@@ -12,7 +12,7 @@
 | Pre-recording dataLayer entries | 2 (snapshot at panel open; their time is the snapshot time) |
 | Site requests (non-tracking) | NOT recorded - the "API context" toggle was off |
 | User agent | Chrome |
-| Dump schema | v1 (Pulsecheck 0.1.1) |
+| Dump schema | v1 (Pulsecheck 0.2.0) |
 
 Detection is incomplete; review before sharing. Scenario notes and the user-agent string are not redacted.
 

@@ -7,7 +7,7 @@ import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { parse, toRequest, parseDataLayer } from '../extension/parsers.js';
 import { redactEvent, looksLikePhone } from '../extension/redact.js';
-import { buildSession, toJsonl, toMarkdown, fileBase } from '../extension/export.js';
+import { buildSession, toJsonl, toMarkdown, fileBase, liveChecks } from '../extension/export.js';
 
 let failed = 0;
 const t = (name, fn) => {
@@ -1057,6 +1057,26 @@ t('API-context event paths mask emails and secrets in both exports', () => {
     assert.ok(!output.includes('jane@example.com'));
     assert.ok(!output.includes('abc123'));
   }
+});
+
+t('live checks match the export checks', () => {
+  const t0 = 1754812800000;
+  const page = 'https://shop.example/cart';
+  const ev = (seq, dt, source, vendor, event, params) => ({ type: 'event', seq, ts: t0 + dt, source, vendor, event, params, page });
+  const events = [
+    ev(1, 900, 'network', 'ga4', 'page_view', { tid: 'G-1', gcs: 'G100', dl: 'https://shop.example/cart?email=jane@example.com' }),
+    ev(2, 0, 'consent', 'consent', 'consent_default', { ad_storage: 'denied', analytics_storage: 'denied' }),
+    ev(3, 1400, 'network', 'meta', 'PageView', { id: '1234567890123456' }),
+    ev(4, 3000, 'consent', 'consent', 'consent_update', { ad_storage: 'granted', analytics_storage: 'granted' }),
+    ev(5, 4000, 'network', 'ga4', 'purchase', { tid: 'G-1', gcs: 'G111', transaction_id: 'A-1', value: 10 }),
+    ev(6, 4100, 'network', 'ga4', 'purchase', { tid: 'G-1', gcs: 'G111', transaction_id: 'A-1', value: 10 }),
+  ];
+  const s = buildSession({ startedAt: t0, page, events });
+  const live = liveChecks(events);
+  assert.deepEqual(live.consent, s.checks.consent);
+  assert.deepEqual(live.dupes.map(({ key, ...d }) => d), s.checks.dupes.map(({ key, ...d }) => d));
+  assert.equal(live.dupes.length, 1);
+  assert.equal(live.consent.length, 2);
 });
 
 t('release versions agree', () => {

@@ -47,8 +47,14 @@ The manifest requests no extension permissions.
 1. Open the panel before starting the flow you want to test.
 2. Enter a short scenario name, such as `checkout with a promo code`.
 3. Walk through the flow.
-4. Inspect or filter the recorded events.
+4. Watch the pulse strip and live checks, then inspect or filter the recorded events.
 5. Save the Markdown file, copy it, or export JSONL.
+
+The pulse strip draws every event on one time axis, with page loads and
+findings marked; hover a bar for details or click it to open the row. Live
+checks count duplicates, consent issues and masked fields as you record; the
+consent count leaves out cookieless pings that Consent Mode allows. Click a check to see the rows behind it; the expanded row says
+what was found and why it matters.
 
 Recording starts when the panel opens and ends when DevTools closes. Optional
 **API context** adds the method, host, path, status and MIME type for non-static
@@ -169,6 +175,7 @@ extension/
 └── export.js
 test/run.mjs
 skill/SKILL.md
+tools/demo/         # synthetic session for UI checks and store screenshots
 ```
 
 Run the test suite:
@@ -176,6 +183,16 @@ Run the test suite:
 ```sh
 npm test
 ```
+
+Run the panel in a normal browser tab with a synthetic checkout session
+(`chrome.devtools` is mocked; the extension never loads the demo files):
+
+```sh
+node tools/demo/server.mjs
+```
+
+Then open `http://localhost:8480/panel.html`, or `/__demo/store.html?shot=1`
+to `3` for the store screenshot frames.
 
 Validate the store package inputs:
 

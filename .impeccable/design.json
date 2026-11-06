@@ -1,0 +1,796 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-06T06:19:12.890Z",
+  "title": "Design System: Pulsecheck",
+  "extensions": {
+    "colorMeta": {
+      "bg": {
+        "role": "neutral",
+        "displayName": "White",
+        "canonical": "#ffffff",
+        "oklch": "oklch(100.0% 0.000 89.9)",
+        "dark": "#1f1f1f",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Mist",
+        "canonical": "#f8f9fa",
+        "oklch": "oklch(98.2% 0.002 247.8)",
+        "dark": "#262729",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242526",
+          "#414243",
+          "#606162",
+          "#818283",
+          "#a4a5a6",
+          "#c8c9ca",
+          "#edeeef"
+        ]
+      },
+      "surface-2": {
+        "role": "neutral",
+        "displayName": "Fog",
+        "canonical": "#f1f3f4",
+        "oklch": "oklch(96.3% 0.003 228.8)",
+        "dark": "#2d2f31",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#242526",
+          "#414243",
+          "#606162",
+          "#818383",
+          "#a3a5a6",
+          "#c7c9ca",
+          "#edeff0"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#e3e5e8",
+        "oklch": "oklch(92.1% 0.005 258.3)",
+        "dark": "#3a3c3f",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#242527",
+          "#404244",
+          "#606164",
+          "#818285",
+          "#a3a5a8",
+          "#c7c9cc",
+          "#edeff2"
+        ]
+      },
+      "line-strong": {
+        "role": "neutral",
+        "displayName": "Strong Hairline",
+        "canonical": "#c7cacf",
+        "oklch": "oklch(83.8% 0.008 260.7)",
+        "dark": "#55585c",
+        "tonalRamp": [
+          "#090b0e",
+          "#232529",
+          "#404246",
+          "#5f6166",
+          "#808287",
+          "#a2a5aa",
+          "#c6c9ce",
+          "#ebeff4"
+        ]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1f1f1f",
+        "oklch": "oklch(23.9% 0.000 89.9)",
+        "dark": "#e3e3e3",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "text-2": {
+        "role": "neutral",
+        "displayName": "Slate",
+        "canonical": "#5f6368",
+        "oklch": "oklch(49.8% 0.009 253.9)",
+        "dark": "#a8abaf",
+        "tonalRamp": [
+          "#090b0f",
+          "#22252a",
+          "#3f4247",
+          "#5e6267",
+          "#7e8388",
+          "#a1a5ab",
+          "#c5cacf",
+          "#eaeff5"
+        ]
+      },
+      "text-3": {
+        "role": "neutral",
+        "displayName": "Pewter",
+        "canonical": "#6f7378",
+        "oklch": "oklch(55.4% 0.009 253.9)",
+        "dark": "#8e9196",
+        "tonalRamp": [
+          "#090b0f",
+          "#22252a",
+          "#3f4247",
+          "#5e6266",
+          "#7f8388",
+          "#a1a5ab",
+          "#c5cacf",
+          "#eaeff5"
+        ]
+      },
+      "blue": {
+        "role": "primary",
+        "displayName": "Google Blue",
+        "canonical": "#1a73e8",
+        "oklch": "oklch(57.4% 0.195 257.9)",
+        "dark": "#a8c7fa",
+        "tonalRamp": [
+          "#000827",
+          "#002254",
+          "#003d8a",
+          "#015bc5",
+          "#277ef4",
+          "#69a6fe",
+          "#a9cbfe",
+          "#e5effe"
+        ]
+      },
+      "blue-strong": {
+        "role": "primary",
+        "displayName": "Deep Blue",
+        "canonical": "#0b57d0",
+        "oklch": "oklch(49.5% 0.199 260.6)",
+        "dark": "#a8c7fa",
+        "tonalRamp": [
+          "#00052e",
+          "#001f5b",
+          "#003995",
+          "#0a56cf",
+          "#337bf7",
+          "#70a4fe",
+          "#abcaff",
+          "#e6efff"
+        ]
+      },
+      "blue-tint": {
+        "role": "primary",
+        "displayName": "Blue Tint",
+        "canonical": "#e8f0fe",
+        "oklch": "oklch(95.3% 0.021 261.8)",
+        "dark": "#1f3760",
+        "tonalRamp": [
+          "#070b14",
+          "#20252f",
+          "#3c424d",
+          "#5b626d",
+          "#7c838f",
+          "#9ea5b2",
+          "#c2cad7",
+          "#e7effd"
+        ]
+      },
+      "blue-hover": {
+        "role": "primary",
+        "displayName": "Blue Hover",
+        "canonical": "#d3e3fd",
+        "oklch": "oklch(91.2% 0.040 260.1)",
+        "dark": "#284a80",
+        "tonalRamp": [
+          "#030b1c",
+          "#1a2538",
+          "#364257",
+          "#546278",
+          "#75839b",
+          "#97a6be",
+          "#bbcae4",
+          "#e5efff"
+        ]
+      },
+      "ok": {
+        "role": "semantic",
+        "displayName": "Pass Green",
+        "canonical": "#137333",
+        "oklch": "oklch(48.8% 0.130 149.0)",
+        "dark": "#6dd58c",
+        "tonalRamp": [
+          "#001002",
+          "#002e0e",
+          "#00511e",
+          "#157434",
+          "#409755",
+          "#65bb77",
+          "#8ae19a",
+          "#c8ffd0"
+        ]
+      },
+      "ok-tint": {
+        "role": "semantic",
+        "displayName": "Pass Green Tint",
+        "canonical": "#e6f4ea",
+        "oklch": "oklch(95.4% 0.020 154.9)",
+        "dark": "#1b3a26",
+        "tonalRamp": [
+          "#050e08",
+          "#1e2821",
+          "#3a453d",
+          "#59655c",
+          "#79867d",
+          "#9ca9a0",
+          "#c0cdc4",
+          "#e5f3e9"
+        ]
+      },
+      "warn": {
+        "role": "semantic",
+        "displayName": "Amber",
+        "canonical": "#9a5300",
+        "oklch": "oklch(51.6% 0.122 58.9)",
+        "dark": "#fdd663",
+        "tonalRamp": [
+          "#180600",
+          "#3b1c00",
+          "#643400",
+          "#904e01",
+          "#b76e2b",
+          "#dd9151",
+          "#ffb77f",
+          "#ffeadb"
+        ]
+      },
+      "warn-mark": {
+        "role": "semantic",
+        "displayName": "Amber Mark",
+        "canonical": "#f9ab00",
+        "oklch": "oklch(79.6% 0.167 76.0)",
+        "dark": "#fdd663",
+        "tonalRamp": [
+          "#140800",
+          "#352000",
+          "#5a3b00",
+          "#825801",
+          "#ad7601",
+          "#da9501",
+          "#ffbb4d",
+          "#ffebd0"
+        ]
+      },
+      "warn-tint": {
+        "role": "semantic",
+        "displayName": "Amber Tint",
+        "canonical": "#fef7e0",
+        "oklch": "oklch(97.6% 0.031 92.9)",
+        "dark": "#3d3212",
+        "tonalRamp": [
+          "#100b00",
+          "#2a2513",
+          "#48422f",
+          "#67614d",
+          "#89826e",
+          "#aca590",
+          "#d0c9b3",
+          "#f5eed8"
+        ]
+      },
+      "bad": {
+        "role": "semantic",
+        "displayName": "Finding Red",
+        "canonical": "#c5221f",
+        "oklch": "oklch(53.2% 0.198 27.9)",
+        "dark": "#f2b8b5",
+        "tonalRamp": [
+          "#210000",
+          "#4e0001",
+          "#810005",
+          "#b70910",
+          "#e04138",
+          "#fe7466",
+          "#feb3a9",
+          "#fee9e6"
+        ]
+      },
+      "bad-mark": {
+        "role": "semantic",
+        "displayName": "Finding Red Mark",
+        "canonical": "#d93025",
+        "oklch": "oklch(57.8% 0.206 29.0)",
+        "dark": "#ee675c",
+        "tonalRamp": [
+          "#210000",
+          "#4e0000",
+          "#810000",
+          "#b90002",
+          "#e33c2f",
+          "#fe7463",
+          "#ffb3a7",
+          "#ffe9e5"
+        ]
+      },
+      "bad-tint": {
+        "role": "semantic",
+        "displayName": "Finding Red Tint",
+        "canonical": "#fce8e6",
+        "oklch": "oklch(94.6% 0.022 24.4)",
+        "dark": "#4a2020",
+        "tonalRamp": [
+          "#130807",
+          "#2f2120",
+          "#4d3e3c",
+          "#6d5d5b",
+          "#8f7e7c",
+          "#b3a09e",
+          "#d7c4c2",
+          "#fde9e7"
+        ]
+      },
+      "rec": {
+        "role": "semantic",
+        "displayName": "Record Red",
+        "canonical": "#d93025",
+        "oklch": "oklch(57.8% 0.206 29.0)",
+        "dark": "#ee675c",
+        "tonalRamp": [
+          "#210000",
+          "#4e0000",
+          "#810000",
+          "#b90002",
+          "#e33c2f",
+          "#fe7463",
+          "#ffb3a7",
+          "#ffe9e5"
+        ]
+      },
+      "json": {
+        "role": "neutral",
+        "displayName": "Payload Paper",
+        "canonical": "#fbfbfc",
+        "oklch": "oklch(98.8% 0.001 286.4)",
+        "dark": "#232426",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#252526",
+          "#424243",
+          "#616162",
+          "#828283",
+          "#a5a5a6",
+          "#c9c9ca",
+          "#eeeeef"
+        ]
+      },
+      "v-consent": {
+        "role": "vendor",
+        "displayName": "Consent Violet",
+        "canonical": "#9334e6",
+        "oklch": "oklch(55.5% 0.248 303.1)",
+        "tonalRamp": [
+          "#130028",
+          "#34005b",
+          "#5a0096",
+          "#8114d0",
+          "#a348f8",
+          "#bc86fe",
+          "#d6bafe",
+          "#f2eafe"
+        ]
+      },
+      "v-datalayer": {
+        "role": "vendor",
+        "displayName": "dataLayer Grey",
+        "canonical": "#80868b",
+        "oklch": "oklch(61.7% 0.010 242.9)",
+        "dark": "#9aa0a6",
+        "tonalRamp": [
+          "#080c0f",
+          "#21262a",
+          "#3d4347",
+          "#5c6267",
+          "#7d8388",
+          "#a0a6ab",
+          "#c4cacf",
+          "#e9eff5"
+        ]
+      },
+      "v-ga4": {
+        "role": "vendor",
+        "displayName": "GA4 Blue",
+        "canonical": "#1a73e8",
+        "oklch": "oklch(57.4% 0.195 257.9)",
+        "dark": "#8ab4f8",
+        "tonalRamp": [
+          "#000827",
+          "#002254",
+          "#003d8a",
+          "#015bc5",
+          "#277ef4",
+          "#69a6fe",
+          "#a9cbfe",
+          "#e5effe"
+        ]
+      },
+      "v-gads": {
+        "role": "vendor",
+        "displayName": "Google Ads Cyan",
+        "canonical": "#12b5cb",
+        "oklch": "oklch(70.9% 0.121 210.3)",
+        "tonalRamp": [
+          "#000e12",
+          "#002b32",
+          "#024b55",
+          "#036e7c",
+          "#0493a5",
+          "#1db9cf",
+          "#55def5",
+          "#cff7ff"
+        ]
+      },
+      "v-floodlight": {
+        "role": "vendor",
+        "displayName": "Floodlight Sky",
+        "canonical": "#7cacf8",
+        "oklch": "oklch(74.1% 0.122 259.3)",
+        "tonalRamp": [
+          "#000729",
+          "#002058",
+          "#143f81",
+          "#3460a6",
+          "#5482cb",
+          "#76a6f1",
+          "#aacbfe",
+          "#e6effe"
+        ]
+      },
+      "v-meta": {
+        "role": "vendor",
+        "displayName": "Meta Magenta",
+        "canonical": "#e52592",
+        "oklch": "oklch(61.7% 0.236 352.7)",
+        "tonalRamp": [
+          "#1e000e",
+          "#49002a",
+          "#790049",
+          "#ae006c",
+          "#e1208f",
+          "#ff64b1",
+          "#ffadcf",
+          "#ffe7f0"
+        ]
+      },
+      "v-metrica": {
+        "role": "vendor",
+        "displayName": "Metrica Orange",
+        "canonical": "#e8710a",
+        "oklch": "oklch(67.7% 0.174 51.1)",
+        "tonalRamp": [
+          "#1a0400",
+          "#3e1900",
+          "#6a2f00",
+          "#984701",
+          "#c96001",
+          "#f87f26",
+          "#ffb68c",
+          "#ffeade"
+        ]
+      },
+      "v-amplitude": {
+        "role": "vendor",
+        "displayName": "Amplitude Teal",
+        "canonical": "#00897b",
+        "oklch": "oklch(56.6% 0.101 182.5)",
+        "tonalRamp": [
+          "#000f0c",
+          "#002c27",
+          "#014d45",
+          "#047165",
+          "#209687",
+          "#4fbaaa",
+          "#76dfcf",
+          "#b9fff2"
+        ]
+      },
+      "v-tiktok": {
+        "role": "vendor",
+        "displayName": "TikTok Graphite",
+        "canonical": "#3c4043",
+        "oklch": "oklch(36.9% 0.007 240.0)",
+        "dark": "#e3e3e3",
+        "tonalRamp": [
+          "#080c0e",
+          "#222628",
+          "#3f4346",
+          "#5e6265",
+          "#7e8386",
+          "#a1a6a9",
+          "#c5cacd",
+          "#eaeff3"
+        ]
+      },
+      "v-generic": {
+        "role": "vendor",
+        "displayName": "Generic Grey",
+        "canonical": "#9aa0a6",
+        "oklch": "oklch(70.3% 0.011 248.0)",
+        "tonalRamp": [
+          "#080c10",
+          "#21262a",
+          "#3d4348",
+          "#5c6267",
+          "#7d8389",
+          "#a0a6ac",
+          "#c4cad0",
+          "#e9eff6"
+        ]
+      },
+      "v-unparsed": {
+        "role": "vendor",
+        "displayName": "Unparsed Red",
+        "canonical": "#d93025",
+        "oklch": "oklch(57.8% 0.206 29.0)",
+        "tonalRamp": [
+          "#210000",
+          "#4e0000",
+          "#810000",
+          "#b90002",
+          "#e33c2f",
+          "#fe7463",
+          "#ffb3a7",
+          "#ffe9e5"
+        ]
+      },
+      "v-request": {
+        "role": "vendor",
+        "displayName": "Request Grey",
+        "canonical": "#c4c7c5",
+        "oklch": "oklch(82.7% 0.004 157.2)",
+        "dark": "#5f6368",
+        "tonalRamp": [
+          "#0a0c0a",
+          "#232624",
+          "#404341",
+          "#5f6260",
+          "#808381",
+          "#a3a6a4",
+          "#c7cac8",
+          "#ecefed"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "title": {
+        "displayName": "Title",
+        "purpose": "Popover heading and empty-state heading; the popup heading is 15px."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Base text, event table, field input, check labels."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Buttons and event names."
+      },
+      "label-sm": {
+        "displayName": "Label small",
+        "purpose": "Vendor chips and Check column text."
+      },
+      "table-head": {
+        "displayName": "Table head",
+        "purpose": "Event table column headers only, uppercase."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Strip legend; strip page labels are 500 11px on the canvas."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Row times, parameters, page paths, record timer; strip ticks at 11px."
+      },
+      "mono-block": {
+        "displayName": "Mono block",
+        "purpose": "Expanded JSON payload, pre-wrapped."
+      },
+      "count": {
+        "displayName": "Count",
+        "purpose": "Live check numbers in the count badge."
+      }
+    },
+    "shadows": [
+      {
+        "name": "popover",
+        "value": "0 2px 6px rgba(60, 64, 67, .15), 0 8px 24px rgba(60, 64, 67, .18)",
+        "purpose": "API context confirm dialog."
+      },
+      {
+        "name": "tooltip",
+        "value": "0 4px 12px rgba(0, 0, 0, .2)",
+        "purpose": "Pulse strip hover tooltip."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state",
+        "value": ".12s ease-out",
+        "purpose": "Background and border colour on buttons and fields."
+      },
+      {
+        "name": "count-roll",
+        "value": ".32s cubic-bezier(.16, 1, .3, 1)",
+        "purpose": "Live check count rolls up from translateY(45%) at opacity .35 when it changes."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "none",
+        "purpose": "Under prefers-reduced-motion the roll and transitions are off and row scroll is instant."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "narrow",
+        "value": "max-width: 860px"
+      }
+    ],
+    "themes": {
+      "dark": "Applied as :root.dark when chrome.devtools.panels.themeName is dark; the popup follows prefers-color-scheme. Per-token dark values are in colorMeta.<token>.dark."
+    },
+    "strip": {
+      "height": "108px",
+      "barWidth": "3px",
+      "slotWidth": "4px",
+      "stackGap": "2px",
+      "sourceHeight": {
+        "network": 1,
+        "consent": 0.72,
+        "datalayer": 0.52,
+        "request": 0.3
+      },
+      "filteredOpacity": 0.22,
+      "selectedColumn": "9px blue-tint column behind the selected bar, which is drawn in text (ink)",
+      "findingMark": "4px square under the baseline, warn-mark or bad-mark",
+      "pageBoundary": "dashed 1px text-3 vertical, 3px dash 2px gap"
+    }
+  },
+  "components": [
+    {
+      "name": "Default Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Toolbar and dialog buttons at rest.",
+      "html": "<button class=\"ds-btn\">API context</button>",
+      "css": ".ds-btn { font: 500 13px/1.45 system-ui, \"Segoe UI Variable Text\", \"Segoe UI\", Roboto, sans-serif; color: var(--text, #1f1f1f); background: var(--bg, #ffffff); border: 1px solid var(--line-strong, #c7cacf); border-radius: 8px; height: 30px; padding: 0 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background-color .12s ease-out, border-color .12s ease-out; } .ds-btn:hover { background: var(--surface-2, #f1f3f4); } .ds-btn:focus-visible { outline: 2px solid var(--blue, #1a73e8); outline-offset: 1px; } .ds-btn[aria-pressed=\"true\"] { background: var(--blue-tint, #e8f0fe); border-color: var(--blue-tint, #e8f0fe); color: var(--blue-strong, #0b57d0); }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one filled action per surface (Save .md).",
+      "html": "<button class=\"ds-btn-primary\">Save .md</button>",
+      "css": ".ds-btn-primary { font: 500 13px/1.45 system-ui, \"Segoe UI Variable Text\", \"Segoe UI\", Roboto, sans-serif; color: #fff; background: var(--blue, #1a73e8); border: 1px solid var(--blue, #1a73e8); border-radius: 8px; height: 30px; padding: 0 12px; cursor: pointer; transition: background-color .12s ease-out, border-color .12s ease-out; } .ds-btn-primary:hover { background: var(--blue-strong, #0b57d0); border-color: var(--blue-strong, #0b57d0); } .ds-btn-primary:focus-visible { outline: 2px solid var(--blue, #1a73e8); outline-offset: 1px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary actions: Copy .md, Save .jsonl, Clear, Cancel, detail actions.",
+      "html": "<button class=\"ds-btn-ghost\">Copy .md</button>",
+      "css": ".ds-btn-ghost { font: 500 13px/1.45 system-ui, \"Segoe UI Variable Text\", \"Segoe UI\", Roboto, sans-serif; color: var(--blue-strong, #0b57d0); background: var(--bg, #ffffff); border: 1px solid transparent; border-radius: 8px; height: 30px; padding: 0 12px; cursor: pointer; transition: background-color .12s ease-out; } .ds-btn-ghost:hover { background: var(--blue-tint, #e8f0fe); } .ds-btn-ghost:focus-visible { outline: 2px solid var(--blue, #1a73e8); outline-offset: 1px; }"
+    },
+    {
+      "name": "Filter Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Tonal search and scenario fields in the toolbar.",
+      "html": "<label class=\"ds-field\"><svg viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"7\" r=\"4.5\"/><path d=\"m10.5 10.5 3 3\"/></svg><input placeholder=\"Filter events\"></label>",
+      "css": ".ds-field { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; width: 240px; background: var(--surface-2, #f1f3f4); border: 1px solid transparent; border-radius: 8px; transition: border-color .12s ease-out, background-color .12s ease-out; } .ds-field:focus-within { background: var(--bg, #ffffff); border-color: var(--blue, #1a73e8); } .ds-field svg { width: 16px; height: 16px; color: var(--text-2, #5f6368); flex: none; } .ds-field input { font: 13px/1.45 system-ui, \"Segoe UI\", Roboto, sans-serif; color: var(--text, #1f1f1f); background: transparent; border: 0; outline: 0; width: 100%; padding: 0; } .ds-field input::placeholder { color: var(--text-2, #5f6368); }"
+    },
+    {
+      "name": "Vendor Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Vendor filter toggle with a categorical swatch; off shows an outline ring.",
+      "html": "<button class=\"ds-chip\" aria-pressed=\"true\" style=\"--ink: #1a73e8\"><i></i>ga4</button> <button class=\"ds-chip\" aria-pressed=\"false\" style=\"--ink: #e52592\"><i></i>meta</button>",
+      "css": ".ds-chip { font: 500 12px/1.45 system-ui, \"Segoe UI\", Roboto, sans-serif; height: 26px; padding: 0 10px 0 8px; border-radius: 8px; border: 1px solid var(--line-strong, #c7cacf); background: var(--bg, #ffffff); color: var(--text-2, #5f6368); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: background-color .12s ease-out, border-color .12s ease-out; } .ds-chip i { width: 8px; height: 8px; border-radius: 2px; background: var(--ink); flex: none; } .ds-chip:hover { background: var(--surface-2, #f1f3f4); } .ds-chip[aria-pressed=\"true\"] { background: var(--blue-tint, #e8f0fe); border-color: var(--blue-tint, #e8f0fe); color: var(--text, #1f1f1f); } .ds-chip[aria-pressed=\"false\"] i { background: transparent; box-shadow: inset 0 0 0 1.5px var(--ink); } .ds-chip:focus-visible { outline: 2px solid var(--blue, #1a73e8); outline-offset: 1px; }"
+    },
+    {
+      "name": "Live Check",
+      "kind": "custom",
+      "refersTo": "check",
+      "description": "Check row with a state-tinted mono count; pressing it filters the table to the rows behind it.",
+      "html": "<div class=\"ds-checks\"><button class=\"ds-check\" data-state=\"warn\" aria-pressed=\"false\"><span class=\"ds-num\">1</span><span>Duplicates</span></button><button class=\"ds-check\" data-state=\"bad\" aria-pressed=\"true\"><span class=\"ds-num\">1</span><span>Consent issues</span></button><button class=\"ds-check\" data-state=\"ok\" aria-pressed=\"false\"><span class=\"ds-num\">0</span><span>Masked fields</span></button></div>",
+      "css": ".ds-checks { display: flex; flex-direction: column; width: 264px; } .ds-check { font: 400 13px/1.45 system-ui, \"Segoe UI\", Roboto, sans-serif; display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: var(--text, #1f1f1f); cursor: pointer; text-align: left; } .ds-check:hover { background: var(--surface-2, #f1f3f4); } .ds-check[aria-pressed=\"true\"] { background: var(--blue-tint, #e8f0fe); color: var(--blue-strong, #0b57d0); } .ds-check:focus-visible { outline: 2px solid var(--blue, #1a73e8); outline-offset: 1px; } .ds-num { display: inline-block; min-width: 28px; height: 20px; padding: 0 6px; border-radius: 6px; text-align: center; font: 600 12px/20px ui-monospace, \"Cascadia Mono\", \"SF Mono\", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; background: var(--surface-2, #f1f3f4); color: var(--text-2, #5f6368); } .ds-check[data-state=\"ok\"] .ds-num { background: var(--ok-tint, #e6f4ea); color: var(--ok, #137333); } .ds-check[data-state=\"warn\"] .ds-num { background: var(--warn-tint, #fef7e0); color: var(--warn, #9a5300); } .ds-check[data-state=\"bad\"] .ds-num { background: var(--bad-tint, #fce8e6); color: var(--bad, #c5221f); }"
+    },
+    {
+      "name": "Event Row",
+      "kind": "custom",
+      "refersTo": "row",
+      "description": "Dense grid row: mono time, vendor swatch, event, mono parameters, severity-coloured check text.",
+      "html": "<div class=\"ds-row\"><span class=\"ds-t\">+1.4s</span><span class=\"ds-v\" style=\"--ink: #e52592\"><i></i>meta</span><span class=\"ds-e\">PageView</span><span class=\"ds-p\">{\"id\":\"1234567890123456\"}</span><span class=\"ds-c\" data-sev=\"bad\">Sent while denied, not gated</span></div><div class=\"ds-row\"><span class=\"ds-t\">+0.9s</span><span class=\"ds-v\" style=\"--ink: #1a73e8\"><i></i>ga4</span><span class=\"ds-e\">page_view</span><span class=\"ds-p\">{\"tid\":\"G-DEMO123\"}</span><span class=\"ds-c\" data-sev=\"note\">Cookieless ping, expected</span></div>",
+      "css": ".ds-row { display: grid; grid-template-columns: 74px 112px minmax(140px, 240px) minmax(0, 1fr) minmax(150px, 220px); column-gap: 14px; align-items: baseline; padding: 3px 14px; min-height: 24px; border-bottom: 1px solid var(--line, #e3e5e8); font: 13px/1.45 system-ui, \"Segoe UI\", Roboto, sans-serif; color: var(--text, #1f1f1f); cursor: pointer; } .ds-row:hover { background: var(--surface, #f8f9fa); } .ds-row:has([data-sev=\"bad\"]) { background: color-mix(in srgb, var(--bad-tint, #fce8e6) 55%, var(--bg, #ffffff)); } .ds-row:focus-visible { outline: 2px solid var(--blue, #1a73e8); outline-offset: -2px; } .ds-t { font: 12px ui-monospace, \"Cascadia Mono\", Menlo, monospace; font-variant-numeric: tabular-nums; color: var(--text-2, #5f6368); text-align: right; } .ds-v { display: flex; gap: 7px; align-items: baseline; color: var(--text-2, #5f6368); } .ds-v i { width: 8px; height: 8px; border-radius: 2px; background: var(--ink); flex: none; } .ds-e { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-p { font: 12px ui-monospace, \"Cascadia Mono\", Menlo, monospace; color: var(--text-2, #5f6368); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-c { font-size: 12px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-c[data-sev=\"bad\"] { color: var(--bad, #c5221f); } .ds-c[data-sev=\"warn\"] { color: var(--warn, #9a5300); } .ds-c[data-sev=\"note\"] { color: var(--text-3, #6f7378); font-weight: 400; }"
+    },
+    {
+      "name": "Confirm Popover",
+      "kind": "card",
+      "refersTo": "popover",
+      "description": "Floating confirm for the API context toggle; the only shadowed card.",
+      "html": "<div class=\"ds-pop\" role=\"dialog\"><h2>Record API context?</h2><p>Adds method, host, path, status and MIME type for non-static site requests. Nothing leaves this device.</p><div class=\"ds-pop-actions\"><button class=\"ds-pop-ghost\">Cancel</button><button class=\"ds-pop-primary\">Enable for this session</button></div></div>",
+      "css": ".ds-pop { width: 320px; padding: 14px 16px 12px; background: var(--bg, #ffffff); color: var(--text, #1f1f1f); border: 1px solid var(--line, #e3e5e8); border-radius: 12px; box-shadow: 0 2px 6px rgba(60, 64, 67, .15), 0 8px 24px rgba(60, 64, 67, .18); font: 13px/1.45 system-ui, \"Segoe UI\", Roboto, sans-serif; } .ds-pop h2 { font-size: 14px; font-weight: 600; margin: 0 0 6px; } .ds-pop p { margin: 0 0 12px; color: var(--text-2, #5f6368); } .ds-pop-actions { display: flex; justify-content: flex-end; gap: 6px; } .ds-pop-ghost, .ds-pop-primary { font: inherit; font-weight: 500; height: 30px; padding: 0 12px; border-radius: 8px; cursor: pointer; } .ds-pop-ghost { color: var(--blue-strong, #0b57d0); background: transparent; border: 1px solid transparent; } .ds-pop-ghost:hover { background: var(--blue-tint, #e8f0fe); } .ds-pop-primary { color: #fff; background: var(--blue, #1a73e8); border: 1px solid var(--blue, #1a73e8); } .ds-pop-primary:hover { background: var(--blue-strong, #0b57d0); border-color: var(--blue-strong, #0b57d0); } .ds-pop button:focus-visible { outline: 2px solid var(--blue, #1a73e8); outline-offset: 1px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Instrument Strip",
+    "overview": "Pulsecheck is a DevTools panel that sits next to Elements and Network, so it borrows their material: white ground, cool grey surfaces separated by 1px hairlines, system sans at 13px, monospace for anything that is evidence. Google blue carries every action, selection and focus state. Green, amber and red appear only where a check has a result. Vendors get their own categorical palette, used on the pulse strip, the vendor chips and the swatch in each row.\n\nThe signature is the session pulse strip: a canvas timeline across the top where every event is a 3px bar, coloured by vendor and sized by source, with dashed page boundaries and finding marks under the baseline. Live checks sit to its right, and each count rolls when it changes. Clicking a count filters the table to the rows behind it. The table below is dense (24px rows), grouped by page under sticky headers, with a Check column that states each finding in plain words.\n\nDensity is the default. Decoration is limited to tonal fills, hairlines and the vendor swatches; there are no gradients, no illustrations inside the panel and no shadows on resting surfaces. Light and dark follow the DevTools theme.",
+    "keyCharacteristics": [
+      "White first, cool grey tonal layers, 1px hairlines between every band.",
+      "One action colour (Google blue) for actions, selection and focus.",
+      "Semantic green, amber and red reserved for check results and finding rows.",
+      "A categorical vendor palette, separate from the semantic one.",
+      "Monospace with tabular figures for times, counts and payloads.",
+      "8px corners on every control; tonal fills instead of borders for on states."
+    ],
+    "rules": [
+      {
+        "name": "The One Blue Rule",
+        "body": "Blue means action, selection or focus. Nothing decorative is blue; a blue thing can be clicked or is the current selection.",
+        "section": "colors"
+      },
+      {
+        "name": "The Findings Own Colour Rule",
+        "body": "Green, amber and red appear only where a check has a result: count badges, the Check column, finding row tints, strip marks and the capture error banner. Never use them for chrome or emphasis.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Palettes Rule",
+        "body": "Vendor colours identify the sender; semantic colours judge the event. A vendor swatch never carries a verdict and a verdict never takes a vendor colour.",
+        "section": "colors"
+      },
+      {
+        "name": "The Evidence Is Mono Rule",
+        "body": "Anything copied from the wire (timestamps, payloads, URLs, IDs, counts) is set in monospace with tabular figures. Prose and labels never are.",
+        "section": "typography"
+      },
+      {
+        "name": "The Chrome-Only Uppercase Rule",
+        "body": "Uppercase appears only in the table header: sans, 11px, 600, 0.04em tracking. No other label, page title or meta line is uppercase.",
+        "section": "typography"
+      },
+      {
+        "name": "The Float-Only Shadow Rule",
+        "body": "A shadow means the layer floats over content and will go away. Bars, rows, chips, buttons and fields never cast one.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use `blue` for one filled primary action per surface and `blue-strong` text for every other action.",
+      "Do separate bands and rows with 1px `line` hairlines and layer with `surface` and `surface-2`.",
+      "Do set times, counts, paths and payloads in monospace with tabular figures.",
+      "Do tie every semantic colour to a check result that a user can click through to rows.",
+      "Do show on states with a `blue-tint` fill and off states with an outline ring.",
+      "Do define every colour for both the light and the dark theme under the same token name."
+    ],
+    "donts": [
+      "Don't use green, amber or red for chrome, emphasis or vendor identity.",
+      "Don't use vendor colours for anything other than strip bars and swatches.",
+      "Don't add shadows to resting surfaces; only popovers and tooltips float.",
+      "Don't use uppercase outside the table header, and never above 0.06em tracking.",
+      "Don't set any text below 4.5:1 against `bg` or `surface`; `text-3` is the floor of the text ramp, not a starting point for lighter greys."
+    ]
+  }
+}

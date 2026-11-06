@@ -5,130 +5,296 @@
 <title>Pulsecheck</title>
 <style>
   :root {
-    color-scheme: light dark;
-    --bg: #fff;
-    --fg: #252525;
-    --muted: #6b6b6b;
-    --line: #e2e2df;
-    --accent: #0F6E56;
-    --accent-soft: #1D9E75;
-    --row: #fafaf8;
-    --warn: #a8460f;
-    --rec: #B3261E;
+    color-scheme: light;
+    --bg: #ffffff;
+    --surface: #f8f9fa;
+    --surface-2: #f1f3f4;
+    --line: #e3e5e8;
+    --line-strong: #c7cacf;
+    --text: #1f1f1f;
+    --text-2: #5f6368;
+    --text-3: #6f7378;
+    --blue: #1a73e8;
+    --blue-strong: #0b57d0;
+    --blue-tint: #e8f0fe;
+    --blue-hover: #d3e3fd;
+    --ok: #137333;
+    --ok-tint: #e6f4ea;
+    --warn: #9a5300;
+    --warn-mark: #f9ab00;
+    --warn-tint: #fef7e0;
+    --bad: #c5221f;
+    --bad-mark: #d93025;
+    --bad-tint: #fce8e6;
+    --rec: #d93025;
+    --json: #fbfbfc;
+    --v-consent: #9334e6;
+    --v-datalayer: #80868b;
+    --v-ga4: #1a73e8;
+    --v-gads: #12b5cb;
+    --v-floodlight: #7cacf8;
+    --v-meta: #e52592;
+    --v-metrica: #e8710a;
+    --v-amplitude: #00897b;
+    --v-tiktok: #3c4043;
+    --v-generic: #9aa0a6;
+    --v-unparsed: #d93025;
+    --v-request: #c4c7c5;
+    --mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1e1e1e; --fg: #e6e6e3; --muted: #9a9a96; --line: #343433;
-      --accent: #1D9E75; --accent-soft: #1D9E75; --row: #252525; --warn: #e08a4f;
-      --rec: #F2705C;
-    }
+  :root.dark {
+    color-scheme: dark;
+    --bg: #1f1f1f;
+    --surface: #262729;
+    --surface-2: #2d2f31;
+    --line: #3a3c3f;
+    --line-strong: #55585c;
+    --text: #e3e3e3;
+    --text-2: #a8abaf;
+    --text-3: #8e9196;
+    --blue: #a8c7fa;
+    --blue-strong: #a8c7fa;
+    --blue-tint: #1f3760;
+    --blue-hover: #284a80;
+    --ok: #6dd58c;
+    --ok-tint: #1b3a26;
+    --warn: #fdd663;
+    --warn-mark: #fdd663;
+    --warn-tint: #3d3212;
+    --bad: #f2b8b5;
+    --bad-mark: #ee675c;
+    --bad-tint: #4a2020;
+    --rec: #ee675c;
+    --json: #232426;
+    --v-datalayer: #9aa0a6;
+    --v-ga4: #8ab4f8;
+    --v-tiktok: #e3e3e3;
+    --v-request: #5f6368;
   }
+
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body {
     display: flex; flex-direction: column;
-    background: var(--bg); color: var(--fg);
-    font: 13px/1.45 system-ui, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    font: 13px/1.45 var(--sans);
+    -webkit-font-smoothing: antialiased;
   }
+  ::selection { background: var(--blue-hover); }
+  :focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 10px; border: 3px solid var(--bg); }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  button {
+    font: inherit; font-weight: 500; color: var(--text); background: var(--bg);
+    border: 1px solid var(--line-strong); border-radius: 8px;
+    height: 30px; padding: 0 12px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+    transition: background-color .12s ease-out, border-color .12s ease-out;
+  }
+  button:hover { background: var(--surface-2); }
+  button.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  button.primary:hover { background: var(--blue-strong); border-color: var(--blue-strong); }
+  :root.dark button.primary { color: #062e6f; }
+  button.ghost { border-color: transparent; color: var(--blue-strong); }
+  button.ghost:hover { background: var(--blue-tint); }
+  button.toggle[aria-pressed="true"] { background: var(--blue-tint); border-color: var(--blue-tint); color: var(--blue-strong); }
+  button svg { width: 16px; height: 16px; flex: none; }
+
   #bar {
     display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
-    padding: 8px 10px; border-bottom: 1px solid var(--line);
+    padding: 7px 10px; border-bottom: 1px solid var(--line);
   }
-  button {
-    font: inherit; color: var(--fg); background: transparent;
-    border: 1px solid var(--line); border-radius: 5px;
-    padding: 4px 10px; cursor: pointer;
-  }
-  button:hover { border-color: var(--accent-soft); }
-  button.primary { border-color: var(--accent); color: var(--accent); }
-  button.toggle.on { border-color: var(--accent); color: var(--accent); }
+  #rec { gap: 8px; padding: 0 12px 0 10px; }
+  #rec .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--rec); flex: none; }
+  #rec .time { font: 12px var(--mono); font-variant-numeric: tabular-nums; color: var(--text-2); }
+  #rec.off { color: var(--text-2); }
+  #rec.off .dot { background: transparent; box-shadow: inset 0 0 0 1.5px var(--text-3); }
+  #rec.off .time { display: none; }
 
-  /* Record button: red and breathing while capturing, inert when paused. */
-  #rec { display: inline-flex; align-items: center; gap: 7px; }
-  #rec .dot {
-    position: relative; width: 8px; height: 8px; border-radius: 50%;
-    background: currentColor; flex: none;
+  .field {
+    display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px;
+    background: var(--surface-2); border: 1px solid transparent; border-radius: 8px;
+    transition: border-color .12s ease-out, background-color .12s ease-out;
   }
-  #rec.on { border-color: var(--rec); color: var(--rec); }
-  #rec.on:hover { border-color: var(--rec); }
-  #rec.on .dot { animation: breathe 1.7s ease-in-out infinite; }
-  #rec.on .dot::after {
-    content: ''; position: absolute; inset: -3px; border-radius: 50%;
-    border: 1px solid currentColor; animation: wave 1.7s ease-out infinite;
+  .field:focus-within { background: var(--bg); border-color: var(--blue); }
+  .field svg { width: 16px; height: 16px; color: var(--text-2); flex: none; }
+  .field input {
+    font: inherit; color: var(--text); background: transparent; border: 0; outline: 0;
+    width: 100%; min-width: 0; padding: 0;
   }
-  #rec.off { color: var(--muted); }
-  #rec.off .dot { background: transparent; box-shadow: inset 0 0 0 1.5px currentColor; }
-  @keyframes breathe { 50% { opacity: .3; transform: scale(.6); } }
-  @keyframes wave {
-    0% { opacity: .7; transform: scale(.7); }
-    100% { opacity: 0; transform: scale(2.1); }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    #rec.on .dot { animation: none; }
-    #rec.on .dot::after { display: none; }
-  }
+  .field input::placeholder { color: var(--text-2); }
+  .field input::-webkit-search-cancel-button { filter: grayscale(1); }
+  .scenario { flex: 1 1 200px; min-width: 120px; }
+  .search { flex: 0 1 240px; min-width: 120px; }
+  .exports { display: flex; gap: 8px; align-items: center; margin-left: auto; flex: none; }
+  #count { color: var(--text-2); font-variant-numeric: tabular-nums; margin-right: 2px; }
 
-  input {
-    font: inherit; color: var(--fg); background: var(--bg);
-    border: 1px solid var(--line); border-radius: 5px; padding: 4px 8px;
+  .api { position: relative; }
+  .pop {
+    position: absolute; z-index: 5; top: calc(100% + 6px); left: 0; width: 320px;
+    padding: 14px 16px 12px; background: var(--bg); color: var(--text);
+    border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(60, 64, 67, .15), 0 8px 24px rgba(60, 64, 67, .18);
   }
-  #notes { flex: 1 1 200px; min-width: 140px; }
-  #filter { flex: 0 1 160px; }
-  .spacer { flex: 1 1 auto; }
-  #count { color: var(--muted); }
-  #chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 6px 10px 0; }
+  .pop[hidden] { display: none; }
+  .pop h2 { font-size: 14px; font-weight: 600; margin: 0 0 6px; }
+  .pop p { margin: 0 0 12px; color: var(--text-2); }
+  .pop .actions { display: flex; justify-content: flex-end; gap: 6px; }
+
+  #overview { display: grid; grid-template-columns: minmax(0, 1fr) 280px; border-bottom: 1px solid var(--line); }
+  #strip { position: relative; height: 108px; padding: 0 14px; }
+  #pulse { display: block; width: 100%; height: 100%; cursor: crosshair; }
+  #tip {
+    position: absolute; z-index: 4; pointer-events: none; padding: 6px 9px; max-width: 360px;
+    background: #202124; color: #e8eaed; border-radius: 6px; font-size: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #tip[hidden] { display: none; }
+  #tip b { font-weight: 600; }
+  #tip .tt { font-family: var(--mono); color: #bdc1c6; margin-right: 6px; }
+
+  #checks { display: flex; flex-direction: column; justify-content: center; gap: 0; padding: 6px 8px; border-left: 1px solid var(--line); }
+  .check {
+    justify-content: flex-start; gap: 10px; height: 26px; padding: 0 8px;
+    border: 0; border-radius: 8px; background: transparent; font-weight: 400; color: var(--text);
+  }
+  .check:hover { background: var(--surface-2); }
+  .check[aria-pressed="true"] { background: var(--blue-tint); color: var(--blue-strong); }
+  .check .num {
+    display: inline-block; min-width: 28px; height: 20px; padding: 0 6px; overflow: hidden;
+    border-radius: 6px; text-align: center; line-height: 20px;
+    font: 600 12px/20px var(--mono); font-variant-numeric: tabular-nums;
+    background: var(--surface-2); color: var(--text-2);
+  }
+  .check .num span { display: block; }
+  .check .num.roll span { animation: roll .32s cubic-bezier(.16, 1, .3, 1); }
+  @keyframes roll { from { transform: translateY(45%); opacity: .35; } to { transform: none; opacity: 1; } }
+  .check[data-state="ok"] .num { background: var(--ok-tint); color: var(--ok); }
+  .check[data-state="warn"] .num { background: var(--warn-tint); color: var(--warn); }
+  .check[data-state="bad"] .num { background: var(--bad-tint); color: var(--bad); }
+  .check .lbl { flex: 1; text-align: left; }
+  .legend { display: flex; flex-wrap: wrap; gap: 2px 12px; align-items: baseline; margin: 2px 8px 0; color: var(--text-3); font-size: 11px; line-height: 15px; }
+  .legend span { display: inline-flex; align-items: baseline; gap: 5px; }
+  .legend i { display: inline-block; width: 3px; background: var(--line-strong); }
+
+  #chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  #chips:empty { display: none; }
   .chip {
-    font: inherit; background: transparent;
-    border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px;
-    cursor: pointer; color: var(--muted); font-size: 12px;
+    height: 26px; padding: 0 10px 0 8px; border-radius: 8px; font-size: 12px; font-weight: 500;
+    border: 1px solid var(--line-strong); background: var(--bg); color: var(--text-2); gap: 6px;
   }
-  .chip.on { border-color: var(--accent); color: var(--accent); }
-  #err { color: var(--warn); padding: 0 10px; }
+  .chip i { width: 8px; height: 8px; border-radius: 2px; background: var(--ink); flex: none; }
+  .chip[aria-pressed="true"] { background: var(--blue-tint); border-color: var(--blue-tint); color: var(--text); }
+  .chip[aria-pressed="false"] i { background: transparent; box-shadow: inset 0 0 0 1.5px var(--ink); }
+
+  #err { display: flex; gap: 8px; align-items: center; padding: 7px 12px; background: var(--warn-tint); color: var(--warn); border-bottom: 1px solid var(--line); }
   #err:empty { display: none; }
-  #list { flex: 1 1 auto; overflow: auto; padding: 6px 0 24px; }
-  .row {
-    display: grid; grid-template-columns: 58px 84px minmax(120px, 260px) 1fr;
-    gap: 10px; align-items: baseline;
-    padding: 4px 10px; border-bottom: 1px solid var(--line); cursor: pointer;
+
+  .grid {
+    display: grid; grid-template-columns: 74px 112px minmax(140px, 240px) minmax(0, 1fr) minmax(150px, 220px);
+    column-gap: 14px; align-items: baseline; padding: 0 14px;
   }
-  .row:focus-visible, .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-  .row:nth-child(even) { background: var(--row); }
-  .t { color: var(--muted); font-family: ui-monospace, "Cascadia Mono", Menlo, monospace; font-size: 12px; }
-  .v { color: var(--accent); }
-  .v[data-vendor="unparsed"] { color: var(--warn); }
-  .v[data-vendor="generic"] { color: var(--fg); }
-  .v[data-vendor="request"] { color: var(--muted); }
-  .e { font-weight: 600; }
-  .p { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .row.open .p { white-space: normal; }
-  pre {
-    grid-column: 1 / -1; margin: 6px 0 2px; padding: 8px;
-    background: var(--row); border: 1px solid var(--line); border-radius: 5px;
-    font-family: ui-monospace, "Cascadia Mono", Menlo, monospace; font-size: 12px;
-    white-space: pre-wrap; word-break: break-word;
+  #head {
+    padding-top: 6px; padding-bottom: 6px; align-items: center; border-bottom: 1px solid var(--line); background: var(--surface);
+    font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-2);
   }
-  #empty { color: var(--muted); padding: 24px 10px; max-width: 60ch; }
-  #empty p { margin: 0 0 10px; }
-  #empty p:first-child { color: var(--fg); }
+  #head span:first-child { text-align: right; }
+  #list { flex: 1 1 auto; overflow: auto; padding-bottom: 24px; }
+  .page {
+    position: sticky; top: 0; z-index: 2; display: flex; gap: 10px; align-items: baseline;
+    padding: 8px 14px 6px 102px; background: var(--bg); border-bottom: 1px solid var(--line);
+    font-weight: 600;
+  }
+  .page .path { font-family: var(--mono); font-size: 12px; font-weight: 400; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row { min-height: 24px; padding-top: 3px; padding-bottom: 3px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .row:hover { background: var(--surface); }
+  .row.open { background: var(--blue-tint); }
+  .row.hit:not(.open) { background: color-mix(in srgb, var(--flag-tint) 55%, var(--bg)); }
+  .row:focus-visible { outline-offset: -2px; }
+  .t { font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text-2); text-align: right; }
+  .v { display: flex; gap: 7px; align-items: baseline; color: var(--text-2); min-width: 0; }
+  .v i { width: 8px; height: 8px; border-radius: 2px; background: var(--ink); flex: none; transform: translateY(-1px); }
+  .v[data-vendor="unparsed"] { color: var(--bad); }
+  .e { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .p { font-family: var(--mono); font-size: 12px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .p.muted { color: var(--text-3); font-family: var(--sans); }
+  .c { font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .c[data-sev="bad"] { color: var(--bad); }
+  .c[data-sev="warn"] { color: var(--warn); }
+  .c[data-sev="note"] { color: var(--text-3); font-weight: 400; }
+  .row.open .c[data-sev="note"], .row.open .p.muted { color: var(--text-2); }
+  .detail {
+    grid-column: 2 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 14px;
+    margin: 8px 0 6px; cursor: auto;
+  }
+  .detail pre {
+    margin: 0; padding: 10px 12px; max-height: 360px; overflow: auto;
+    background: var(--json); border: 1px solid var(--line); border-radius: 8px;
+    font: 12px/1.55 var(--mono); white-space: pre-wrap; word-break: break-word; color: var(--text);
+  }
+  .detail .why { margin: 0 0 8px; max-width: 46ch; color: var(--text); }
+  .detail .side { display: flex; flex-direction: column; align-items: flex-start; }
+
+  #empty { display: grid; place-content: center; gap: 6px; padding: 48px 16px; text-align: center; color: var(--text-2); }
+  #empty b { color: var(--text); font-size: 14px; font-weight: 600; }
+  #empty p { margin: 0; max-width: 56ch; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .check .num.roll span { animation: none; }
+    button, .field { transition: none; }
+  }
+  @media (max-width: 860px) {
+    #overview { grid-template-columns: 1fr; }
+    #checks { flex-direction: row; flex-wrap: wrap; border-left: 0; border-top: 1px solid var(--line); }
+    .grid { grid-template-columns: 64px 96px minmax(110px, 200px) minmax(0, 1fr); }
+    .grid > :nth-child(4) { display: none; }
+    .page { padding-left: 92px; }
+  }
 </style>
 </head>
 <body>
-  <div id="bar">
-    <button id="rec" class="on" title="Pause recording"><span class="dot"></span><span id="recLabel">Recording</span></button>
-    <button id="clear" title="Clear the session; vendor filters are kept">Clear</button>
-    <button id="all" class="toggle" aria-pressed="false" title="Record method, host, path, status and MIME type for non-static site requests. Bodies and query strings are excluded.">API context</button>
-    <input id="notes" aria-label="Scenario" placeholder="Scenario, e.g. checkout with a promo code">
-    <input id="filter" aria-label="Filter events" placeholder="Filter: event, vendor, URL, parameters">
-    <span class="spacer"></span>
-    <span id="count">0 events</span>
-    <button id="copy" title="Whole session; the filter is not applied">Copy .md</button>
-    <button id="md" class="primary" title="Whole session; the filter is not applied">Save .md</button>
-    <button id="jsonl" title="Whole session; the filter is not applied">Save .jsonl</button>
-  </div>
+  <header id="bar">
+    <button id="rec" class="on" aria-pressed="true" title="Pause recording"><span class="dot" aria-hidden="true"></span><span id="recLabel">Recording</span><span id="recTime" class="time">0:00</span></button>
+    <button id="clear" class="ghost" title="Clear the session; vendor filters are kept">Clear</button>
+    <span class="api">
+      <button id="all" class="toggle" aria-pressed="false" aria-haspopup="dialog" title="Record method, host, path, status and MIME type for non-static site requests">API context</button>
+      <div id="apiConfirm" class="pop" role="dialog" aria-labelledby="apiTitle" hidden>
+        <h2 id="apiTitle">Record API context?</h2>
+        <p>Adds method, host, path, status and MIME type for non-static site requests. Request bodies and query strings are excluded. Nothing leaves this device.</p>
+        <div class="actions"><button id="apiCancel" class="ghost">Cancel</button><button id="apiOk" class="primary">Enable for this session</button></div>
+      </div>
+    </span>
+    <label class="field scenario"><span class="sr">Scenario</span><input id="notes" autocomplete="off" placeholder="Scenario, e.g. checkout with a promo code"></label>
+    <label class="field search">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg>
+      <span class="sr">Filter events</span><input id="filter" type="search" autocomplete="off" placeholder="Filter events">
+    </label>
+    <span class="exports">
+      <span id="count">0 events</span>
+      <button id="copy" class="ghost" title="Whole session; the filter is not applied">Copy .md</button>
+      <button id="md" class="primary" title="Whole session; the filter is not applied">Save .md</button>
+      <button id="jsonl" class="ghost" title="Whole session; the filter is not applied">Save .jsonl</button>
+    </span>
+  </header>
+  <section id="overview">
+    <div id="strip"><canvas id="pulse" role="img" aria-label="Session timeline: no events yet"></canvas><div id="tip" hidden></div></div>
+    <div id="checks" role="group" aria-label="Live checks">
+      <button class="check" data-check="dupe" aria-pressed="false" title="Show each repeated hit and the hit it repeats"><span class="num"><span>0</span></span><span class="lbl">Duplicates</span></button>
+      <button class="check" data-check="consent" aria-pressed="false" title="Hits sent while the consent they answer to was denied, excluding cookieless pings that Consent Mode allows; the export lists every observation"><span class="num"><span>0</span></span><span class="lbl">Consent issues</span></button>
+      <button class="check" data-check="pii" aria-pressed="false" title="Show events with fields that are masked in the export"><span class="num"><span>0</span></span><span class="lbl">Masked fields</span></button>
+      <p class="legend" title="Bar height shows the source of each event"><span><i style="height: 10px"></i>network hit</span><span><i style="height: 7px"></i>consent</span><span><i style="height: 5px"></i>dataLayer</span></p>
+    </div>
+  </section>
   <div id="chips" role="group" aria-label="Vendors"></div>
-  <div id="err"></div>
+  <div id="err" role="status"></div>
+  <div id="head" class="grid" aria-hidden="true"><span>Time</span><span>Vendor</span><span>Event</span><span>Parameters</span><span>Check</span></div>
   <div id="list"><div id="empty">
-    <p>Walk through the flow on the page; events appear here. Reload the page to capture its startup requests: network capture starts when this panel opens, earlier dataLayer entries are recovered from a snapshot.</p>
+    <b>Walk through the flow on the page</b>
+    <p>Events appear here and on the strip above as they are sent. Reload the page to capture its startup requests; earlier dataLayer entries are recovered from a snapshot.</p>
     <p>Save before closing DevTools. The session stays in memory and nothing is sent off-device.</p>
   </div></div>
   <script type="module" src="panel.js"></script>

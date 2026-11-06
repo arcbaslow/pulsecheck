@@ -6,7 +6,7 @@
 import { redactEvent, redactUrl } from './redact.js';
 
 const SCHEMA = 1;
-const TOOL_VERSION = '0.1.1';
+const TOOL_VERSION = '0.2.0';
 
 const CONSENT_KEY = { ga4: 'analytics_storage', gads: 'ad_storage', floodlight: 'ad_storage', meta: 'ad_storage', tiktok: 'ad_storage' };
 
@@ -163,15 +163,7 @@ function checks(events, hits, dupes) {
     byName.set(nk, (byName.get(nk) || 0) + 1);
   }
 
-  const consent = events
-    .map((e) => ({ e, key: consentKey(e) }))
-    .filter(({ e, key }) => key && e.consent && e.consent[key] === 'denied')
-    .map(({ e, key }) => {
-      const gcs = e.params?.gcs;
-      const claim = decodeGcs(gcs)?.[key];
-      const kind = ['meta', 'tiktok'].includes(e.vendor) ? 'ungated' : claim === 'denied' ? 'cookieless' : claim === 'granted' ? 'mismatch' : 'unsigned';
-      return { seq: e.seq, vendor: e.vendor, event: e.event, key, kind, gcs };
-    });
+  const consent = consentObservations(events);
 
   const piiByPath = new Map();
   for (const h of hits) {
@@ -192,6 +184,33 @@ function checks(events, hits, dupes) {
     unparsed: events.filter((e) => e.vendor === 'unparsed').length,
     generic: events.filter((e) => e.vendor === 'generic').length,
   };
+}
+
+function consentObservations(events) {
+  return events
+    .map((e) => ({ e, key: consentKey(e) }))
+    .filter(({ e, key }) => key && e.consent && e.consent[key] === 'denied')
+    .map(({ e, key }) => {
+      const gcs = e.params?.gcs;
+      const claim = decodeGcs(gcs)?.[key];
+      const kind = ['meta', 'tiktok'].includes(e.vendor) ? 'ungated' : claim === 'denied' ? 'cookieless' : claim === 'granted' ? 'mismatch' : 'unsigned';
+      return { seq: e.seq, vendor: e.vendor, event: e.event, key, kind, gcs };
+    });
+}
+
+// Same ordering, consent replay and rules as buildSession, without redaction.
+export function liveChecks(events) {
+  const consent = {};
+  const ordered = [...events]
+    .sort((a, b) => a.ts - b.ts || a.seq - b.seq)
+    .map((e, i) => {
+      const stamped = { ...e, seq: i + 1 };
+      if (Object.keys(consent).length) stamped.consent = { ...consent };
+      else delete stamped.consent;
+      if (e.source === 'consent') Object.assign(consent, consentState(e.params));
+      return stamped;
+    });
+  return { dupes: duplicateSuspects(ordered), consent: consentObservations(ordered) };
 }
 
 // --- markdown ----------------------------------------------------------

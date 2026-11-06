@@ -1,6 +1,6 @@
 {
   "name": "pulsecheck",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Chrome DevTools recorder for tracking requests, dataLayer pushes and consent changes",

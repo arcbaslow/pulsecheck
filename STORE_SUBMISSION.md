@@ -6,9 +6,9 @@ The extension ID is `fcdnmpffnfcbfhkokkfnilicjbpjdmnp`.
 
 ## Package and listing materials
 
-The upload package and listing material are generated for version `0.1.1`.
+The upload package and listing material are generated for version `0.2.0`.
 
-- Upload package: `dist/pulsecheck-chrome-web-store-0.1.1.zip`
+- Upload package: `dist/pulsecheck-chrome-web-store-0.2.0.zip`
 - Listing copy and declarations: `store-listing/`
 - Graphic assets: `store/`
 - Privacy policy URL for the dashboard: `https://goodlabs.kz/privacy`

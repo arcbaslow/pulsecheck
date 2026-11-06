@@ -3,7 +3,15 @@
 Pulsecheck is now available on the
 [Chrome Web Store](https://chromewebstore.google.com/detail/pulsecheck-tracking-audit/fcdnmpffnfcbfhkokkfnilicjbpjdmnp).
 
-## Unreleased
+## 0.2.0 - 2026-11-05
+
+Panel redesign.
+
+- Redraw the panel white first, with Google blue for actions and selection and semantic colours only for findings; follow the DevTools dark theme.
+- Add a session pulse strip: every event as a bar on one time axis, page boundaries marked, findings flagged under the axis; hover for details, click to open the row.
+- Run the duplicate, consent and masked-field checks live, each clickable to show the rows behind it, with a plain-language reason in the expanded row. The live consent count leaves out cookieless pings that Consent Mode allows; the export still lists every consent observation.
+- Keep rows in send order and grouped by page, add a Check column, Go to links between duplicate pairs, Copy redacted JSON in the expanded row, and an inline confirmation for API context instead of a browser dialog.
+- Restyle the toolbar popup and regenerate the store screenshots from a scripted demo session (`tools/demo/`).
 
 - Decode GA4 Measurement Protocol JSON, Google Ads conversion requests and Floodlight activity tags.
 - Classify consent observations by the hit's gcs claim and page state; exclude vendors outside Google Consent Mode.

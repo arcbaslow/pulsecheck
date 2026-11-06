@@ -4,37 +4,54 @@
 <meta charset="utf-8">
 <title>Pulsecheck</title>
 <style>
-  :root { color-scheme: light dark; --bg: #fff; --fg: #252525; --muted: #6b6b6b; --accent: #0F6E56; --line: #e2e2df; }
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff; --surface: #f8f9fa; --line: #e3e5e8; --text: #1f1f1f; --text-2: #5f6368;
+    --blue: #1a73e8; --blue-strong: #0b57d0; --blue-tint: #e8f0fe;
+  }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #1e1e1e; --fg: #e6e6e3; --muted: #9a9a96; --accent: #1D9E75; --line: #343433; }
+    :root { --bg: #1f1f1f; --surface: #262729; --line: #3a3c3f; --text: #e3e3e3; --text-2: #a8abaf; --blue: #a8c7fa; --blue-strong: #a8c7fa; --blue-tint: #1f3760; }
   }
+  * { box-sizing: border-box; }
   body {
-    background: var(--bg);
-    width: 268px; margin: 0; padding: 14px 16px 16px;
-    font: 13px/1.5 system-ui, "Segoe UI", Roboto, sans-serif; color: var(--fg);
+    width: 300px; margin: 0; padding: 16px;
+    background: var(--bg); color: var(--text);
+    font: 13px/1.5 system-ui, "Segoe UI Variable Text", "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
-  h1 { font-size: 15px; margin: 0 0 8px; }
-  p { margin: 0 0 10px; }
-  ol { margin: 0 0 10px; padding-left: 18px; }
-  li { margin-bottom: 3px; }
+  header { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
+  header img { width: 28px; height: 28px; border-radius: 7px; }
+  h1 { font-size: 15px; font-weight: 600; margin: 0; }
+  header p { margin: 0; color: var(--text-2); font-size: 12px; }
+  ol { list-style: none; margin: 0 0 12px; padding: 0; counter-reset: step; }
+  li { counter-increment: step; display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 6px 0; }
+  li::before {
+    content: counter(step); width: 22px; height: 22px; border-radius: 50%;
+    background: var(--blue-tint); color: var(--blue-strong);
+    font-size: 12px; font-weight: 600; line-height: 22px; text-align: center;
+  }
   kbd {
-    font: inherit; border: 1px solid var(--line); border-bottom-width: 2px;
-    border-radius: 4px; padding: 0 4px;
+    font: 500 12px/1 system-ui, sans-serif; padding: 2px 5px; border-radius: 5px;
+    background: var(--surface); border: 1px solid var(--line);
   }
-  .accent { color: var(--accent); font-weight: 600; }
-  .note { color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; margin: 0; }
-  a { color: var(--accent); }
+  b { font-weight: 600; }
+  .note { margin: 0 0 8px; padding: 10px 12px; border-radius: 8px; background: var(--surface); color: var(--text-2); }
+  .note:last-child { margin: 0; }
+  a { color: var(--blue-strong); font-weight: 500; text-underline-offset: 2px; }
+  code { font: 12px ui-monospace, "Cascadia Mono", Menlo, monospace; }
 </style>
 </head>
 <body>
-  <h1>Pulsecheck lives in DevTools</h1>
-  <p>Recording runs in the DevTools panel, not in this popup.</p>
+  <header>
+    <img src="icons/icon-32.png" alt="">
+    <div><h1>Pulsecheck lives in DevTools</h1><p>Recording runs in the DevTools panel, not in this popup.</p></div>
+  </header>
   <ol>
-    <li>Open a normal website</li>
-    <li>Press <kbd>F12</kbd> (<kbd>Ctrl+Shift+I</kbd>; on macOS <kbd>⌘⌥I</kbd>)</li>
-    <li>The <span class="accent">Pulsecheck</span> tab sits next to Elements and Network, or under <kbd>»</kbd> if the strip is crowded</li>
+    <li><span>Open a normal website</span></li>
+    <li><span>Press <kbd>F12</kbd> or <kbd>Ctrl+Shift+I</kbd>; on macOS <kbd>⌘⌥I</kbd></span></li>
+    <li><span>Select the <b>Pulsecheck</b> tab next to Elements and Network, or under <kbd>»</kbd> if the strip is crowded</span></li>
   </ol>
-  <p class="note">If DevTools was already open when you installed the extension, close it and open it again. The panel never appears on <code>chrome://</code> pages - that is a Chrome restriction.</p>
+  <p class="note">If DevTools was already open when you installed the extension, close it and open it again. The panel never appears on <code>chrome://</code> pages; that is a Chrome restriction.</p>
   <p class="note">Sessions stay in memory and nothing is sent off-device. <a href="https://github.com/arcbaslow/pulsecheck/blob/main/PRIVACY.md" target="_blank" rel="noreferrer">Privacy policy</a></p>
 </body>
 </html>

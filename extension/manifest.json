@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Pulsecheck - tracking audit recorder",
-  "version": "0.1.1",
-  "version_name": "0.1.1 alpha",
+  "version": "0.2.0",
+  "version_name": "0.2.0 alpha",
   "description": "Records tracking requests, dataLayer pushes and consent changes, then exports the session as Markdown or JSONL.",
   "homepage_url": "https://github.com/arcbaslow/pulsecheck",
   "devtools_page": "devtools.html",
